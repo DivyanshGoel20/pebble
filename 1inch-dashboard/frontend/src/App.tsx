@@ -5,6 +5,7 @@ import NFTList from './component/NFTList'
 import GasPrice from './component/GasPrice'
 import TokenBalances from './component/TokenBalances'
 import TransactionTraces from './component/TransactionTraces'
+import TransactionHistory from './component/TransactionHistory'
 
 function App() {
   const { address, isConnected } = useAccount()
@@ -123,9 +124,10 @@ function App() {
               <NFTList address={address} />
             </div>
 
-            {/* Transaction Traces Row */}
-            <div className="grid grid-cols-1 gap-6">
+            {/* Transaction Traces and History Row */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <TransactionTraces />
+              <TransactionHistory />
             </div>
 
             {/* Recent Activity */}

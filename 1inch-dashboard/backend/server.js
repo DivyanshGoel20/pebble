@@ -222,27 +222,27 @@ app.get("/token-balances", async (req, res) => {
 });
 
 // Transaction Traces API endpoints
-app.get("/traces/synced-interval", async (req, res) => {
-  try {
-    const { chainId = 1 } = req.query;
+// app.get("/traces/synced-interval", async (req, res) => {
+//   try {
+//     const { chainId = 1 } = req.query;
     
-    console.log(`Fetching synced interval for chain: ${chainId}`);
+//     console.log(`Fetching synced interval for chain: ${chainId}`);
     
-    const response = await axios.get(`https://api.1inch.dev/traces/v1.0/chain/${chainId}/synced-interval`, {
-      headers: {
-        'Authorization': `Bearer ${process.env.API_KEY}`,
-        'Accept': 'application/json'
-      }
-    });
+//     const response = await axios.get(`https://api.1inch.dev/traces/v1.0/chain/${chainId}/synced-interval`, {
+//       headers: {
+//         'Authorization': `Bearer ${process.env.API_KEY}`,
+//         'Accept': 'application/json'
+//       }
+//     });
     
-    console.log(`Synced interval response status: ${response.status}`);
-    res.json(response.data);
+//     console.log(`Synced interval response status: ${response.status}`);
+//     res.json(response.data);
     
-  } catch (error) {
-    console.error("Traces API Error:", error.response?.data || error.message);
-    res.status(500).json({ message: "Error fetching synced interval" });
-  }
-});
+//   } catch (error) {
+//     console.error("Traces API Error:", error.response?.data || error.message);
+//     res.status(500).json({ message: "Error fetching synced interval" });
+//   }
+// });
 
 app.get("/traces/block-trace", async (req, res) => {
   try {
@@ -293,6 +293,37 @@ app.get("/traces/transaction-trace", async (req, res) => {
   } catch (error) {
     console.error("Traces API Error:", error.response?.data || error.message);
     res.status(500).json({ message: "Error fetching transaction trace" });
+  }
+});
+
+// History API endpoints
+app.get("/history/wallet", async (req, res) => {
+  try {
+    const { address, chainId = 1, limit = 10 } = req.query;
+    
+    if (!address) {
+      return res.status(400).json({ error: "Wallet address is required" });
+    }
+    
+    console.log(`Fetching wallet history for address: ${address} on chain: ${chainId}, limit: ${limit}`);
+    
+    const response = await axios.get(`https://api.1inch.dev/history/v2.0/history/${address}/events`, {
+      params: {
+        chainId: parseInt(chainId),
+        limit: parseInt(limit)
+      },
+      headers: {
+        'Authorization': `Bearer ${process.env.API_KEY}`,
+        'Accept': 'application/json'
+      }
+    });
+    
+    console.log(`History response status: ${response.status}`);
+    res.json(response.data);
+    
+  } catch (error) {
+    console.error("History API Error:", error.response?.data || error.message);
+    res.status(500).json({ message: "Error fetching wallet history" });
   }
 });
 
