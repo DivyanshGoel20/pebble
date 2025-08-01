@@ -221,6 +221,81 @@ app.get("/token-balances", async (req, res) => {
   }
 });
 
+// Transaction Traces API endpoints
+app.get("/traces/synced-interval", async (req, res) => {
+  try {
+    const { chainId = 1 } = req.query;
+    
+    console.log(`Fetching synced interval for chain: ${chainId}`);
+    
+    const response = await axios.get(`https://api.1inch.dev/traces/v1.0/chain/${chainId}/synced-interval`, {
+      headers: {
+        'Authorization': `Bearer ${process.env.API_KEY}`,
+        'Accept': 'application/json'
+      }
+    });
+    
+    console.log(`Synced interval response status: ${response.status}`);
+    res.json(response.data);
+    
+  } catch (error) {
+    console.error("Traces API Error:", error.response?.data || error.message);
+    res.status(500).json({ message: "Error fetching synced interval" });
+  }
+});
+
+app.get("/traces/block-trace", async (req, res) => {
+  try {
+    const { chainId = 1, blockNumber } = req.query;
+    
+    if (!blockNumber) {
+      return res.status(400).json({ error: "Block number is required" });
+    }
+    
+    console.log(`Fetching block trace for chain: ${chainId}, block: ${blockNumber}`);
+    
+    const response = await axios.get(`https://api.1inch.dev/traces/v1.0/chain/${chainId}/block-trace/${blockNumber}`, {
+      headers: {
+        'Authorization': `Bearer ${process.env.API_KEY}`,
+        'Accept': 'application/json'
+      }
+    });
+    
+    console.log(`Block trace response status: ${response.status}`);
+    res.json(response.data);
+    
+  } catch (error) {
+    console.error("Traces API Error:", error.response?.data || error.message);
+    res.status(500).json({ message: "Error fetching block trace" });
+  }
+});
+
+app.get("/traces/transaction-trace", async (req, res) => {
+  try {
+    const { chainId = 1, blockNumber, txHash } = req.query;
+    
+    if (!blockNumber || !txHash) {
+      return res.status(400).json({ error: "Block number and transaction hash are required" });
+    }
+    
+    console.log(`Fetching transaction trace for chain: ${chainId}, block: ${blockNumber}, tx: ${txHash}`);
+    
+    const response = await axios.get(`https://api.1inch.dev/traces/v1.0/chain/${chainId}/block-trace/${blockNumber}/tx-hash/${txHash}`, {
+      headers: {
+        'Authorization': `Bearer ${process.env.API_KEY}`,
+        'Accept': 'application/json'
+      }
+    });
+    
+    console.log(`Transaction trace response status: ${response.status}`);
+    res.json(response.data);
+    
+  } catch (error) {
+    console.error("Traces API Error:", error.response?.data || error.message);
+    res.status(500).json({ message: "Error fetching transaction trace" });
+  }
+});
+
 // Health check endpoint
 app.get("/health", (req, res) => {
   res.json({ status: "OK", message: "Server is running" });

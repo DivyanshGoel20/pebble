@@ -4,6 +4,7 @@ import { Wallet, TrendingUp, Coins, Activity, Image } from 'lucide-react'
 import NFTList from './component/NFTList'
 import GasPrice from './component/GasPrice'
 import TokenBalances from './component/TokenBalances'
+import TransactionTraces from './component/TransactionTraces'
 
 function App() {
   const { address, isConnected } = useAccount()
@@ -120,6 +121,11 @@ function App() {
               
               {/* NFT Collection Section */}
               <NFTList address={address} />
+            </div>
+
+            {/* Transaction Traces Row */}
+            <div className="grid grid-cols-1 gap-6">
+              <TransactionTraces />
             </div>
 
             {/* Recent Activity */}
