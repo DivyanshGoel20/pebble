@@ -21,6 +21,8 @@ app.get("/fetchNfts", async (req, res) => {
   const chainIds = req.query.chainIds || 1;
 
   try {
+    console.log(`Fetching NFTs for address: ${address}, chainIds: ${chainIds}`);
+    
     // Using the working v2 endpoint
     const url = `https://api.1inch.dev/nft/v2/byaddress`;
     
@@ -53,16 +55,21 @@ app.get("/fetchNfts", async (req, res) => {
 // Gas price endpoint to fetch gas prices
 app.get("/gas-price", async (req, res) => {
   try {
-    const response = await axios.get("https://api.1inch.dev/gas-price/v1.4/1", {
+    const chainId = req.query.chainId || 1; // Default to Ethereum Mainnet
+    console.log(`Fetching gas prices for chain ID: ${chainId}`);
+    
+    const response = await axios.get(`https://api.1inch.dev/gas-price/v1.4/${chainId}`, {
       headers: {
         'Authorization': `Bearer ${process.env.API_KEY}`,
         'Accept': 'application/json'
       }
     });
     
+    console.log(`Gas price response for chain ${chainId}:`, JSON.stringify(response.data, null, 2));
     res.json(response.data);
   } catch (error) {
-    console.error("Gas Price API Error:", error.response?.data || error.message);
+    console.error(`Gas Price API Error for chain ${req.query.chainId}:`, error.response?.data || error.message);
+    console.error("Error Status:", error.response?.status);
     res.status(500).json({ message: "Error fetching gas prices" });
   }
 });

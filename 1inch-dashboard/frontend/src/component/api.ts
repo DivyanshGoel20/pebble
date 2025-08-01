@@ -19,12 +19,16 @@ const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeout 
   }
 };
 
-export const fetchNFTs = async (address: string) => {
+export const fetchNFTs = async (address: string, chainId?: number) => {
   try {
-    console.log(`Making API request for address: ${address}`);
+    console.log(`Making API request for address: ${address}, chainId: ${chainId}`);
+    
+    const url = chainId 
+      ? `${API_BASE_URL}/fetchNfts?address=${address}&chainIds=${chainId}`
+      : `${API_BASE_URL}/fetchNfts?address=${address}`;
     
     const response = await fetchWithTimeout(
-      `${API_BASE_URL}/fetchNfts?address=${address}`,
+      url,
       {
         method: 'GET',
         headers: {

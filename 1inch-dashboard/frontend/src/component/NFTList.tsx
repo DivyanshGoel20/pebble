@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { fetchNFTs } from "./api";
+import { useChainId, useConfig } from "wagmi";
 
 interface NFT {
   id: string;
@@ -26,18 +27,27 @@ interface NFTListProps {
 }
 
 const NFTList: React.FC<NFTListProps> = ({ address }) => {
+  const chainId = useChainId();
+  const config = useConfig();
+  const chain = config.chains.find(c => c.id === chainId);
   const [nfts, setNfts] = useState<NFT[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Check if current network supports NFTs
+  const isNFTSupported = chainId === 1 || chainId === 100; // Ethereum or Gnosis
+
   useEffect(() => {
-    if (!address) return;
+    if (!address || !isNFTSupported) {
+      setNfts([]);
+      return;
+    }
 
     const fetchData = async () => {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetchNFTs(address);
+        const response = await fetchNFTs(address, chainId);
         console.log("API Response:", response);
         
         // Handle v2 API response structure
@@ -60,13 +70,25 @@ const NFTList: React.FC<NFTListProps> = ({ address }) => {
     };
 
     fetchData();
-  }, [address]);
+  }, [address, chainId, isNFTSupported]);
 
   if (!address) {
     return (
       <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
         <h3 className="text-lg font-semibold text-white mb-4">NFT Collection</h3>
         <p className="text-white/60 text-center">Connect your wallet to view your NFTs</p>
+      </div>
+    );
+  }
+
+  if (!isNFTSupported) {
+    return (
+      <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
+        <h3 className="text-lg font-semibold text-white mb-4">NFT Collection</h3>
+        <div className="text-center py-8">
+          <p className="text-white/60">NFTs not supported on {chain?.name || 'this network'}</p>
+          <p className="text-white/40 text-sm">Switch to Ethereum or Gnosis to view NFTs</p>
+        </div>
       </div>
     );
   }
@@ -110,7 +132,12 @@ const NFTList: React.FC<NFTListProps> = ({ address }) => {
 
   return (
     <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
-      <h3 className="text-lg font-semibold text-white mb-4">NFT Collection ({nfts.length})</h3>
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-lg font-semibold text-white">NFT Collection ({nfts.length})</h3>
+        {chain && (
+          <span className="text-white/60 text-sm">{chain.name}</span>
+        )}
+      </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {nfts.map((nft) => {
           // Handle different field names from v2 API

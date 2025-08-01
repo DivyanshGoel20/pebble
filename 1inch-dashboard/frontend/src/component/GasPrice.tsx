@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Zap, TrendingUp, TrendingDown, Clock } from "lucide-react";
+import { useChainId, useConfig } from "wagmi";
 
 interface GasPrice {
   baseFee: string;
@@ -22,20 +23,35 @@ interface GasPrice {
 }
 
 const GasPrice: React.FC = () => {
+  const chainId = useChainId();
+  const config = useConfig();
+  const chain = config.chains.find(c => c.id === chainId);
   const [gasPrice, setGasPrice] = useState<GasPrice | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchGasPrice = async () => {
+    if (!chainId) {
+      console.log("No chainId available");
+      return;
+    }
+    
+    console.log("Fetching gas prices for chainId:", chainId);
     setLoading(true);
     setError(null);
     
     try {
-      const response = await fetch("http://localhost:5000/gas-price");
+      const response = await fetch(`http://localhost:5000/gas-price?chainId=${chainId}`);
+      console.log("Gas price response status:", response.status);
+      
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Gas price error response:", errorText);
         throw new Error("Failed to fetch gas prices");
       }
+      
       const data = await response.json();
+      console.log("Gas price data received:", data);
       setGasPrice(data);
     } catch (error) {
       console.error("Error fetching gas price:", error);
@@ -46,16 +62,24 @@ const GasPrice: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchGasPrice();
+    if (chainId) {
+      fetchGasPrice();
+    }
     
     // Refresh gas prices every 30 seconds
-    const interval = setInterval(fetchGasPrice, 30000);
+    const interval = setInterval(() => {
+      if (chainId) {
+        fetchGasPrice();
+      }
+    }, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [chainId]);
 
-  const formatGwei = (value: string) => {
-    const num = parseFloat(value);
-    return num.toFixed(2);
+  // Convert wei to gwei (1 gwei = 10^9 wei)
+  const weiToGwei = (weiValue: string) => {
+    const wei = parseFloat(weiValue);
+    const gwei = wei / 1000000000; // 10^9
+    return gwei.toFixed(2);
   };
 
   const getGasLevelColor = (level: string) => {
@@ -122,22 +146,27 @@ const GasPrice: React.FC = () => {
     <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-semibold text-white">Gas Prices</h3>
-        <button 
-          onClick={fetchGasPrice}
-          className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-lg text-xs transition-colors"
-        >
-          Refresh
-        </button>
+        <div className="flex items-center space-x-2">
+          {chain && (
+            <span className="text-white/60 text-sm">{chain.name}</span>
+          )}
+          <button 
+            onClick={fetchGasPrice}
+            className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-lg text-xs transition-colors"
+          >
+            Refresh
+          </button>
+        </div>
       </div>
       
-      {gasPrice && (
+      {gasPrice ? (
         <div className="space-y-4">
           {/* Base Fee */}
           <div className="bg-white/5 rounded-lg p-4 border border-white/10">
             <div className="flex items-center justify-between mb-2">
               <span className="text-white/60 text-sm">Base Fee</span>
               <span className="text-white font-medium">
-                {formatGwei(gasPrice.baseFee)} Gwei
+                {weiToGwei(gasPrice.baseFee)} Gwei
               </span>
             </div>
           </div>
@@ -161,11 +190,11 @@ const GasPrice: React.FC = () => {
                 <div className="space-y-1">
                   <div className="flex justify-between text-xs">
                     <span className="text-white/60">Priority:</span>
-                    <span className="text-white">{formatGwei(data.maxPriorityFeePerGas)} Gwei</span>
+                    <span className="text-white">{weiToGwei(data.maxPriorityFeePerGas)} Gwei</span>
                   </div>
                   <div className="flex justify-between text-xs">
                     <span className="text-white/60">Max Fee:</span>
-                    <span className="text-white">{formatGwei(data.maxFeePerGas)} Gwei</span>
+                    <span className="text-white">{weiToGwei(data.maxFeePerGas)} Gwei</span>
                   </div>
                 </div>
               </div>
@@ -177,6 +206,11 @@ const GasPrice: React.FC = () => {
               Auto-refreshes every 30 seconds
             </p>
           </div>
+        </div>
+      ) : (
+        <div className="text-center py-8">
+          <p className="text-white/60">No gas price data available</p>
+          <p className="text-white/40 text-sm">Switch to a supported network</p>
         </div>
       )}
     </div>
