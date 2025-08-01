@@ -22,6 +22,7 @@ const TokenBalances: React.FC = () => {
   const [tokenBalances, setTokenBalances] = useState<TokenBalances | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tokenPrices, setTokenPrices] = useState<{[key: string]: number}>({});
 
   const fetchTokenBalances = async () => {
     if (!address || !isConnected) {
@@ -78,6 +79,14 @@ const TokenBalances: React.FC = () => {
   // Shorten wallet address for display
   const shortenAddress = (address: string) => {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  };
+
+  // Calculate USD value
+  const calculateUSDValue = (balance: string, decimals: number, symbol: string) => {
+    const actualAmount = parseFloat(balance) / Math.pow(10, decimals);
+    const price = tokenPrices[symbol] || 0;
+    const usdValue = actualAmount * price;
+    return usdValue > 0 ? `$${usdValue.toFixed(2)}` : '';
   };
 
   if (!isConnected) {
@@ -171,14 +180,16 @@ const TokenBalances: React.FC = () => {
                        </div>
                      </div>
                    </div>
-                   <div className="text-right">
-                     <div className="text-white font-semibold">
-                       {formatBalance(tokenData.balance, tokenData.decimals)} {tokenData.symbol}
-                     </div>
-                     <div className="text-white/60 text-xs">
-                       Balance
-                     </div>
-                   </div>
+                                       <div className="text-right">
+                      <div className="text-white font-semibold">
+                        {formatBalance(tokenData.balance, tokenData.decimals)} {tokenData.symbol}
+                      </div>
+                      {calculateUSDValue(tokenData.balance, tokenData.decimals, tokenData.symbol) && (
+                        <div className="text-white/60 text-xs">
+                          {calculateUSDValue(tokenData.balance, tokenData.decimals, tokenData.symbol)}
+                        </div>
+                      )}
+                    </div>
                  </div>
                </div>
              ))

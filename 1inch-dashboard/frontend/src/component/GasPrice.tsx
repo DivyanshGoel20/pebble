@@ -51,10 +51,10 @@ const GasPrice: React.FC = () => {
       }
       
       const data = await response.json();
-      console.log("Gas price data received:", data);
-      console.log("Setting gasPrice state to:", data);
+      // console.log("Gas price data received:", data);
+      // console.log("Setting gasPrice state to:", data);
       setGasPrice(data);
-      console.log("gasPrice state should now be set");
+      // console.log("gasPrice state should now be set");
     } catch (error) {
       console.error("Error fetching gas price:", error);
       setError("Failed to fetch gas prices");
@@ -79,7 +79,7 @@ const GasPrice: React.FC = () => {
 
   // Debug useEffect to monitor gasPrice changes
   useEffect(() => {
-    console.log("gasPrice state changed:", gasPrice);
+    // console.log("gasPrice state changed:", gasPrice);
   }, [gasPrice]);
 
   // Format gwei values for display (server converts wei to gwei)
