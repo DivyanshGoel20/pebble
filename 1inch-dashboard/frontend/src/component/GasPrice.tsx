@@ -52,7 +52,9 @@ const GasPrice: React.FC = () => {
       
       const data = await response.json();
       console.log("Gas price data received:", data);
+      console.log("Setting gasPrice state to:", data);
       setGasPrice(data);
+      console.log("gasPrice state should now be set");
     } catch (error) {
       console.error("Error fetching gas price:", error);
       setError("Failed to fetch gas prices");
@@ -75,10 +77,14 @@ const GasPrice: React.FC = () => {
     return () => clearInterval(interval);
   }, [chainId]);
 
-  // Convert wei to gwei (1 gwei = 10^9 wei)
-  const weiToGwei = (weiValue: string) => {
-    const wei = parseFloat(weiValue);
-    const gwei = wei / 1000000000; // 10^9
+  // Debug useEffect to monitor gasPrice changes
+  useEffect(() => {
+    console.log("gasPrice state changed:", gasPrice);
+  }, [gasPrice]);
+
+  // Format gwei values for display (server converts wei to gwei)
+  const formatGwei = (gweiValue: string) => {
+    const gwei = parseFloat(gweiValue);
     return gwei.toFixed(2);
   };
 
@@ -159,46 +165,82 @@ const GasPrice: React.FC = () => {
         </div>
       </div>
       
-      {gasPrice ? (
+      {gasPrice && gasPrice.baseFee ? (
         <div className="space-y-4">
           {/* Base Fee */}
           <div className="bg-white/5 rounded-lg p-4 border border-white/10">
             <div className="flex items-center justify-between mb-2">
               <span className="text-white/60 text-sm">Base Fee</span>
               <span className="text-white font-medium">
-                {weiToGwei(gasPrice.baseFee)} Gwei
+                {formatGwei(gasPrice.baseFee)} Gwei
               </span>
+            </div>
+            <div className="text-xs text-white/40">
+              Raw: {gasPrice.baseFee} Gwei
             </div>
           </div>
 
           {/* Gas Levels */}
           <div className="grid grid-cols-2 gap-3">
-            {Object.entries({ low: gasPrice.low, medium: gasPrice.medium, high: gasPrice.high, instant: gasPrice.instant }).map(([level, data]) => (
-              <div 
-                key={level}
-                className="bg-white/5 rounded-lg p-4 border border-white/10 hover:bg-white/10 transition-colors"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center space-x-2">
-                    {getGasLevelIcon(level)}
-                    <span className={`text-sm font-medium capitalize ${getGasLevelColor(level)}`}>
-                      {level}
-                    </span>
+            {Object.entries({ 
+              low: gasPrice.low, 
+              medium: gasPrice.medium, 
+              high: gasPrice.high, 
+              instant: gasPrice.instant 
+            }).map(([level, data]) => {
+              // Add safety check for data
+              if (!data || !data.maxPriorityFeePerGas || !data.maxFeePerGas) {
+                return (
+                  <div 
+                    key={level}
+                    className="bg-white/5 rounded-lg p-4 border border-white/10"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center space-x-2">
+                        {getGasLevelIcon(level)}
+                        <span className={`text-sm font-medium capitalize ${getGasLevelColor(level)}`}>
+                          {level}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-xs text-white/40">No data available</div>
+                  </div>
+                );
+              }
+
+              return (
+                <div 
+                  key={level}
+                  className="bg-white/5 rounded-lg p-4 border border-white/10 hover:bg-white/10 transition-colors"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center space-x-2">
+                      {getGasLevelIcon(level)}
+                      <span className={`text-sm font-medium capitalize ${getGasLevelColor(level)}`}>
+                        {level}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-white/60">Priority:</span>
+                      <span className="text-white">{formatGwei(data.maxPriorityFeePerGas)} Gwei</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-white/60">Max Fee:</span>
+                      <span className="text-white">{formatGwei(data.maxFeePerGas)} Gwei</span>
+                    </div>
+                    <div className="text-xs text-white/30 mt-1">
+                    Raw Priority Fee: {data.maxPriorityFeePerGas} Gwei
+                    </div>
+                    <div className="text-xs text-white/30 mt-1">
+                    Raw Max Fee: {data.maxFeePerGas} Gwei
+                    </div>
                   </div>
                 </div>
-                
-                <div className="space-y-1">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-white/60">Priority:</span>
-                    <span className="text-white">{weiToGwei(data.maxPriorityFeePerGas)} Gwei</span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-white/60">Max Fee:</span>
-                    <span className="text-white">{weiToGwei(data.maxFeePerGas)} Gwei</span>
-                  </div>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="text-center pt-2">
@@ -217,4 +259,4 @@ const GasPrice: React.FC = () => {
   );
 };
 
-export default GasPrice; 
+export default GasPrice;

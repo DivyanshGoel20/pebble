@@ -21,8 +21,6 @@ app.get("/fetchNfts", async (req, res) => {
   const chainIds = req.query.chainIds || 1;
 
   try {
-    console.log(`Fetching NFTs for address: ${address}, chainIds: ${chainIds}`);
-    
     // Using the working v2 endpoint
     const url = `https://api.1inch.dev/nft/v2/byaddress`;
     
@@ -65,11 +63,40 @@ app.get("/gas-price", async (req, res) => {
       }
     });
     
-    console.log(`Gas price response for chain ${chainId}:`, JSON.stringify(response.data, null, 2));
-    res.json(response.data);
+    console.log(`Raw 1inch API response for chain ${chainId}:`, JSON.stringify(response.data, null, 2));
+    
+    // The 1inch API returns values in wei, convert to gwei for frontend display
+    const rawData = response.data;
+    const weiToGwei = (weiValue) => {
+      const wei = parseFloat(weiValue);
+      return (wei / 1000000000).toString(); // Convert wei to gwei
+    };
+    
+    const processedData = {
+      baseFee: weiToGwei(rawData.baseFee),
+      low: {
+        maxPriorityFeePerGas: weiToGwei(rawData.low.maxPriorityFeePerGas),
+        maxFeePerGas: weiToGwei(rawData.low.maxFeePerGas)
+      },
+      medium: {
+        maxPriorityFeePerGas: weiToGwei(rawData.medium.maxPriorityFeePerGas),
+        maxFeePerGas: weiToGwei(rawData.medium.maxFeePerGas)
+      },
+      high: {
+        maxPriorityFeePerGas: weiToGwei(rawData.high.maxPriorityFeePerGas),
+        maxFeePerGas: weiToGwei(rawData.high.maxFeePerGas)
+      },
+      instant: {
+        maxPriorityFeePerGas: weiToGwei(rawData.instant.maxPriorityFeePerGas),
+        maxFeePerGas: weiToGwei(rawData.instant.maxFeePerGas)
+      }
+    };
+    
+    console.log(`Processed gas data for chain ${chainId}:`, JSON.stringify(processedData, null, 2));
+    res.json(processedData);
+    
   } catch (error) {
-    console.error(`Gas Price API Error for chain ${req.query.chainId}:`, error.response?.data || error.message);
-    console.error("Error Status:", error.response?.status);
+    console.error("Gas Price API Error:", error.response?.data || error.message);
     res.status(500).json({ message: "Error fetching gas prices" });
   }
 });
