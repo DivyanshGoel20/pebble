@@ -3,6 +3,7 @@ import { useAccount, useBalance } from 'wagmi'
 import { Wallet, TrendingUp, Coins, Activity, Image } from 'lucide-react'
 import NFTList from './component/NFTList'
 import GasPrice from './component/GasPrice'
+import TokenBalances from './component/TokenBalances'
 
 function App() {
   const { address, isConnected } = useAccount()
@@ -70,24 +71,8 @@ function App() {
 
             {/* Dashboard Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {/* Token Balances Card */}
-              <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
-                <div className="flex items-center space-x-3 mb-4">
-                  <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
-                    <Coins className="w-5 h-5 text-blue-400" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-white">Token Balances</h3>
-                </div>
-                <p className="text-white/60 text-sm mb-4">
-                  View all your token holdings across different chains
-                </p>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-white/60">Loading tokens...</span>
-                    <span className="text-white">-</span>
-                  </div>
-                </div>
-              </div>
+              {/* Token Balances Component */}
+              <TokenBalances />
 
               {/* DeFi Positions Card */}
               <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
