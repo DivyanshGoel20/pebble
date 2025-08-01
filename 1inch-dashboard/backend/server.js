@@ -50,6 +50,23 @@ app.get("/fetchNfts", async (req, res) => {
   }
 });
 
+// Gas price endpoint to fetch gas prices
+app.get("/gas-price", async (req, res) => {
+  try {
+    const response = await axios.get("https://api.1inch.dev/gas-price/v1.4/1", {
+      headers: {
+        'Authorization': `Bearer ${process.env.API_KEY}`,
+        'Accept': 'application/json'
+      }
+    });
+    
+    res.json(response.data);
+  } catch (error) {
+    console.error("Gas Price API Error:", error.response?.data || error.message);
+    res.status(500).json({ message: "Error fetching gas prices" });
+  }
+});
+
 // Health check endpoint
 app.get("/health", (req, res) => {
   res.json({ status: "OK", message: "Server is running" });

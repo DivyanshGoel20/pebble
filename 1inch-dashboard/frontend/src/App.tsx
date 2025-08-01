@@ -2,6 +2,7 @@ import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { useAccount, useBalance } from 'wagmi'
 import { Wallet, TrendingUp, Coins, Activity, Image } from 'lucide-react'
 import NFTList from './component/NFTList'
+import GasPrice from './component/GasPrice'
 
 function App() {
   const { address, isConnected } = useAccount()
@@ -127,8 +128,14 @@ function App() {
               </div>
             </div>
 
-            {/* NFT Collection Section */}
-            <NFTList address={address} />
+            {/* Gas Price and NFT Collection Row */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Gas Price Component */}
+              <GasPrice />
+              
+              {/* NFT Collection Section */}
+              <NFTList address={address} />
+            </div>
 
             {/* Recent Activity */}
             <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">

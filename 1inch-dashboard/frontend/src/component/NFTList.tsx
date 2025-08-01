@@ -29,76 +29,38 @@ const NFTList: React.FC<NFTListProps> = ({ address }) => {
   const [nfts, setNfts] = useState<NFT[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [lastFetchedAddress, setLastFetchedAddress] = useState<string | null>(null);
-
-  // Memoized fetch function to prevent unnecessary re-renders
-  const fetchNFTData = useCallback(async (walletAddress: string) => {
-    // Prevent duplicate requests for the same address
-    if (lastFetchedAddress === walletAddress && nfts.length > 0) {
-      console.log("NFTs already loaded for this address, skipping fetch");
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    
-    try {
-      console.log("Fetching NFTs for address:", walletAddress);
-      const response = await fetchNFTs(walletAddress);
-      console.log("API Response:", response);
-      
-      // Handle v2 API response structure
-      if (response.assets && Array.isArray(response.assets)) {
-        setNfts(response.assets);
-        setLastFetchedAddress(walletAddress);
-        console.log(`Loaded ${response.assets.length} NFTs`);
-      } else if (response.data && response.data.assets) {
-        setNfts(response.data.assets);
-        setLastFetchedAddress(walletAddress);
-        console.log(`Loaded ${response.data.assets.length} NFTs`);
-      } else if (Array.isArray(response)) {
-        setNfts(response);
-        setLastFetchedAddress(walletAddress);
-        console.log(`Loaded ${response.length} NFTs`);
-      } else {
-        console.log("Unexpected data structure:", response);
-        setNfts([]);
-        setLastFetchedAddress(walletAddress);
-      }
-    } catch (error) {
-      console.error("Error fetching NFTs:", error);
-      setError(error instanceof Error ? error.message : "Failed to fetch NFTs");
-      setNfts([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [lastFetchedAddress, nfts.length]);
 
   useEffect(() => {
-    // Clear state when address changes
-    if (!address) {
-      setNfts([]);
+    if (!address) return;
+
+    const fetchData = async () => {
+      setLoading(true);
       setError(null);
-      setLoading(false);
-      setLastFetchedAddress(null);
-      return;
-    }
+      try {
+        const response = await fetchNFTs(address);
+        console.log("API Response:", response);
+        
+        // Handle v2 API response structure
+        if (response.assets && Array.isArray(response.assets)) {
+          setNfts(response.assets);
+        } else if (response.data && response.data.assets) {
+          setNfts(response.data.assets);
+        } else if (Array.isArray(response)) {
+          setNfts(response);
+        } else {
+          console.log("Unexpected data structure:", response);
+          setNfts([]);
+        }
+      } catch (error) {
+        console.error("Error fetching NFTs:", error);
+        setError(error instanceof Error ? error.message : "Failed to fetch NFTs");
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    // Add a small delay to ensure wallet is fully connected
-    const timer = setTimeout(() => {
-      fetchNFTData(address);
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [address, fetchNFTData]);
-
-  // Add a retry function
-  const handleRetry = () => {
-    if (address) {
-      setLastFetchedAddress(null); // Reset to force refetch
-      fetchNFTData(address);
-    }
-  };
+    fetchData();
+  }, [address]);
 
   if (!address) {
     return (
@@ -116,7 +78,6 @@ const NFTList: React.FC<NFTListProps> = ({ address }) => {
         <div className="text-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-4"></div>
           <p className="text-white/60">Loading your NFTs...</p>
-          <p className="text-white/40 text-xs mt-2">This may take a few seconds</p>
         </div>
       </div>
     );
@@ -128,13 +89,7 @@ const NFTList: React.FC<NFTListProps> = ({ address }) => {
         <h3 className="text-lg font-semibold text-white mb-4">NFT Collection</h3>
         <div className="text-center py-8">
           <p className="text-red-400 mb-2">Error loading NFTs</p>
-          <p className="text-white/60 text-sm mb-4">{error}</p>
-          <button 
-            onClick={handleRetry}
-            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-colors"
-          >
-            Try Again
-          </button>
+          <p className="text-white/60 text-sm">{error}</p>
           <p className="text-white/40 text-xs mt-2">Make sure your backend server is running and API key is configured</p>
         </div>
       </div>
@@ -147,13 +102,7 @@ const NFTList: React.FC<NFTListProps> = ({ address }) => {
         <h3 className="text-lg font-semibold text-white mb-4">NFT Collection</h3>
         <div className="text-center py-8">
           <p className="text-white/60">No NFTs found in this wallet</p>
-          <p className="text-white/40 text-sm mb-4">Try connecting a different wallet or check your NFT holdings</p>
-          <button 
-            onClick={handleRetry}
-            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-colors"
-          >
-            Refresh NFTs
-          </button>
+          <p className="text-white/40 text-sm">Try connecting a different wallet or check your NFT holdings</p>
         </div>
       </div>
     );
@@ -161,15 +110,7 @@ const NFTList: React.FC<NFTListProps> = ({ address }) => {
 
   return (
     <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-semibold text-white">NFT Collection ({nfts.length})</h3>
-        <button 
-          onClick={handleRetry}
-          className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-lg text-xs transition-colors"
-        >
-          Refresh
-        </button>
-      </div>
+      <h3 className="text-lg font-semibold text-white mb-4">NFT Collection ({nfts.length})</h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {nfts.map((nft) => {
           // Handle different field names from v2 API
