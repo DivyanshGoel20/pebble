@@ -407,6 +407,110 @@ app.get("/spot-prices/addresses", async (req, res) => {
   }
 });
 
+// Domain API endpoints
+const DOMAIN_BASE_URL = "https://api.1inch.dev/domains/v2.0";
+
+// Retrieve domain information
+app.get("/api/:domain/info", async (req, res) => {
+  try {
+    const { domain } = req.params;
+    console.log(`Domain lookup request for: ${domain}`);
+    
+    // Use 'name' parameter instead of 'domain'
+    const apiUrl = `${DOMAIN_BASE_URL}/lookup?name=${encodeURIComponent(domain)}`;
+    console.log(`Calling 1inch API: ${apiUrl}`);
+    
+    const response = await axios.get(apiUrl, {
+      headers: {
+        Authorization: `Bearer ${process.env.API_KEY}`,
+        'Accept': 'application/json'
+      },
+    });
+    
+    console.log(`Domain API response status: ${response.status}`);
+    console.log(`Domain API response data:`, response.data);
+    
+    res.json(response.data);
+  } catch (error) {
+    console.error("Domain API Error Details:");
+    console.error("Error message:", error.message);
+    console.error("Error status:", error.response?.status);
+    console.error("Error data:", error.response?.data);
+    console.error("Error config:", error.config);
+    
+    res.status(500).json({
+      error: "Failed to fetch domain information",
+      details: error.response?.data || error.message
+    });
+  }
+});
+
+app.get("/api/:domain/reverseinfo", async (req, res) => {
+  try {
+    const { domain } = req.params;
+    console.log(`Domain reverse lookup request for: ${domain}`);
+    
+    // Use 'address' parameter for reverse lookup
+    const apiUrl = `${DOMAIN_BASE_URL}/reverse-lookup?address=${encodeURIComponent(domain)}`;
+    console.log(`Calling 1inch API: ${apiUrl}`);
+    
+    const response = await axios.get(apiUrl, {
+      headers: {
+        Authorization: `Bearer ${process.env.API_KEY}`,
+        'Accept': 'application/json'
+      },
+    });
+    
+    console.log(`Domain reverse API response status: ${response.status}`);
+    console.log(`Domain reverse API response data:`, response.data);
+    
+    res.json(response.data);
+  } catch (error) {
+    console.error("Domain Reverse API Error Details:");
+    console.error("Error message:", error.message);
+    console.error("Error status:", error.response?.status);
+    console.error("Error data:", error.response?.data);
+    console.error("Error config:", error.config);
+    
+    res.status(500).json({
+      error: "Failed to fetch domain reverse information",
+      details: error.response?.data || error.message
+    });
+  }
+});
+
+// Retrieve provider data with avatars
+app.get("/api/providers-data-with-avatar", async (req, res) => {
+  try {
+    console.log(`Provider data request`);
+    const constructedUrl = `${DOMAIN_BASE_URL}/get-providers-data-with-avatar`;
+    console.log(`Calling 1inch API: ${constructedUrl}`);
+    
+    const response = await axios.get(constructedUrl, {
+      headers: {
+        Authorization: `Bearer ${process.env.API_KEY}`,
+        'Accept': 'application/json'
+      },
+    });
+    
+    console.log(`1inch Domain API response status: ${response.status}`);
+    console.log(`1inch Domain API response data:`, response.data);
+    
+    res.json(response.data);
+  } catch (error) {
+    console.error("Domain API Error Details:");
+    console.error("Error message:", error.message);
+    console.error("Error status:", error.response?.status);
+    console.error("Error data:", error.response?.data);
+    console.error("Error config:", error.config);
+    
+    res.status(500).json({ 
+      error: "Failed to fetch provider data",
+      details: error.response?.data || error.message
+    });
+  }
+});
+
 // Health check endpoint
 app.get("/health", (req, res) => {
   res.json({ status: "OK", message: "Server is running" });

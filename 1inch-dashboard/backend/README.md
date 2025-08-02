@@ -1,128 +1,116 @@
-Get Prices for Whitelisted Tokens
-The first endpoint allows you to get prices for whitelisted tokens. These tokens are pre-defined and can be accessed without specifying any parameters. Let's implement a function to fetch these prices:
+Quickstart guide
+Introduction
+This guide will walk you through retrieving data from providers such as ENS, LENS, and UD using the Domains API.
 
-Replace your API key with the one found here
+Prerequisites
+Node.js and npm installed on your machine
+Basic knowledge of JavaScript, React, and Express.js
+Step-by-step guide
+Step 1: Initialization
+Create a new directory for your project:
+mkdir domains && cd domains
+Initialize a new Node.js project:
+npm init -y
+Install Express, CORS, and Axios:
+npm install express cors axios
+Install dotenv for securely storing environment variables:
+npm install dotenv
+Then create a new file called .env and add your DevPortal API key to it:
+API_KEY=YOUR_1INCH_API_KEY
+Step 2: Import required libraries
+Create a new file named api.js in your project directory.
 
-def get_whitelisted_token_prices():
-    url = "https://api.1inch.dev/price/v1.1/1"
+Add the following code to import necessary packages and initialize your Express application:
 
-    response = requests.get(url,  headers={'Authorization': f'Bearer YOUR_API_KEY'})
-    if response.status_code == 200:
-        prices = response.json()
-        print("Prices for whitelisted tokens:")
-        for token_address, price in prices.items():
-            print(f"{token_address}: {price}")
-    else:
-        print("Failed to fetch token prices.")
-Step 3: Get Prices for Requested Tokens
-The second endpoint allows you to request prices for specific tokens. To do this, you need to pass an array of token addresses in the request body. Let's implement a function to get prices for requested tokens:
+const express = require("express");
+const axios = require("axios");
+const dotenv = require("dotenv");
+const cors = require("cors");
+const path = require("path");
 
-def get_requested_token_prices(tokens):
-    url = "https://api.1inch.dev/price/v1.1/1"
+// Load environment variables
+dotenv.config({ path: path.resolve(__dirname, ".env") });
 
-    payload = {
-        "tokens": tokens
-    }
+const app = express();
+app.use(cors());
+Step 3: Define API endpoints
+Add the following code to define your API endpoints:
 
-    response = requests.post(url, headers={'Authorization': f'Bearer YOUR_API_KEY'}, json=payload)
-    if response.status_code == 200:
-        prices = response.json()
-        print("Prices for requested tokens:")
-        for token_address, price in prices.items():
-            print(f"{token_address}: {price}")
-    else:
-        print("Failed to fetch token prices.")
-Step 4: Get Prices for Multiple Addresses
-The third endpoint allows you to get prices for multiple tokens at once. You need to pass multiple token addresses separated by commas in the URL. Let's implement a function to fetch prices for multiple addresses:
+Retrieve domain information
 
-def get_prices_for_addresses(addresses):
-    url = f"https://api.1inch.dev/price/v1.1/1/{','.join(addresses)}"
+const BASE_URL = "https://api.1inch.dev/domains/v2.0";
 
-    response = requests.get(url,  headers={'Authorization': f'Bearer YOUR_API_KEY'})
-    if response.status_code == 200:
-        prices = response.json()
-        print("Prices for requested tokens:")
-        for token_address, price in prices.items():
-            print(f"{token_address}: {price}")
-    else:
-        print("Failed to fetch token prices.")
-Step 5: Test the Functions
-Now that we have implemented the functions, let's test them by calling each one:
+app.get("/api/:domain/info", async (req, res) => {
+  const domain = req.params.domain;
+  try {
+    const constructedUrl = `${BASE_URL}/${domain}/lookup`;
+    const response = await axios.get(constructedUrl, {
+      headers: {
+        Authorization: `Bearer ${process.env.API_KEY}`,
+      },
+    });
+    res.json(response.data);
+  } catch (error) {
+    res.status(500).json({ error: "API error" });
+  }
+});
+Reverse lookup for a domain:
 
-if __name__ == "__main__":
-    # Test get_whitelisted_token_prices
-    get_whitelisted_token_prices()
+app.get("/api/:domain/reverseinfo", async (req, res) => {
+  const domain = req.params.domain;
+  try {
+    const constructedUrl = `${BASE_URL}/${domain}/reverse-lookup`;
+    const response = await axios.get(constructedUrl, {
+      headers: {
+        Authorization: `Bearer ${process.env.API_KEY}`,
+      },
+    });
+    res.json(response.data);
+  } catch (error) {
+    res.status(500).json({ error: "API error" });
+  }
+});
+Retrieve provider data with avatars:
 
-    # Test get_requested_token_prices
-    tokens_to_request = ["0x111111111117dc0aa78b770fa6a738034120c302"]
-    get_requested_token_prices(tokens_to_request)
+app.get("/api/:domain/get-providers-data-with-avatar", async (req, res) => {
+  const domain = req.params.domain;
+  try {
+    const constructedUrl = `${BASE_URL}/get-providers-data-with-avatar`;
+    const response = await axios.get(constructedUrl, {
+      headers: {
+        Authorization: `Bearer ${process.env.API_KEY}`,
+      },
+    });
+    res.json(response.data);
+  } catch (error) {
+    res.status(500).json({ error: "API error" });
+  }
+});
+Step 4: Start the server
+Add the following code to start your Express server and save the file:
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
+Run the server by using in your Terminal:
+node api.js
+Response models
+The API returns structured JSON responses, which you can use to integrate with your application.
 
-    # Test get_prices_for_addresses
-    addresses_to_fetch = ["0x111111111117dc0aa78b770fa6a738034120c302", "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"]
-    get_prices_for_addresses(addresses_to_fetch)
-Step 6: Run the Script
-Save the script and run it using Python. You should see the prices for whitelisted tokens, prices for the requested tokens, and prices for the specified addresses displayed in the console.
-
-That's it! You have successfully used the 1inch Spot Price API to fetch on-chain token prices in Python. You can further integrate this functionality into your applications to get real-time token prices and make informed decisions while trading.
-
-Full script
-Here you can find the full script with consideration of the default RPS limit
-
-import requests
-import time
-
-def get_whitelisted_token_prices():
-    url = "https://api.1inch.dev/price/v1.1/1"
-
-    response = requests.get(url,  headers={'Authorization': f'Bearer YOUR_API_KEY'})
-    if response.status_code == 200:
-        prices = response.json()
-        print("Prices for whitelisted tokens:")
-        for token_address, price in prices.items():
-            print(f"{token_address}: {price}")
-    else:
-        print("Failed to fetch token prices.")
-
-def get_requested_token_prices(tokens):
-    url = "https://api.1inch.dev/price/v1.1/1"
-
-    payload = {
-        "tokens": tokens
-    }
-
-    response = requests.post(url, headers={'Authorization': f'Bearer YOUR_API_KEY'}, json=payload)
-    if response.status_code == 200:
-        prices = response.json()
-        print("Prices for requested tokens:")
-        for token_address, price in prices.items():
-            print(f"{token_address}: {price}")
-    else:
-        print("Failed to fetch token prices.")
-
-def get_prices_for_addresses(addresses):
-    url = f"https://api.1inch.dev/price/v1.1/1/{','.join(addresses)}"
-
-    response = requests.get(url, headers={'Authorization': f'Bearer YOUR_API_KEY'})
-    if response.status_code == 200:
-        prices = response.json()
-        print("Prices for requested tokens:")
-        for token_address, price in prices.items():
-            print(f"{token_address}: {price}")
-    else:
-        print("Failed to fetch token prices.")
-
-if __name__ == "__main__":
-    # Test get_whitelisted_token_prices
-    get_whitelisted_token_prices()
-    # sleep one second because of RPS limit
-    time.sleep(1)
-
-    # Test get_requested_token_prices
-    tokens_to_request = ["0x111111111117dc0aa78b770fa6a738034120c302"]
-    get_requested_token_prices(tokens_to_request)
-    # sleep one second because of RPS limit
-    time.sleep(1)
-
-    # Test get_prices_for_addresses
-    addresses_to_fetch = ["0x111111111117dc0aa78b770fa6a738034120c302", "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"]
-    get_prices_for_addresses(addresses_to_fetch)
+Response model: Provider data with avatar
+{
+  "result": {
+    "protocol": "string",
+    "domain": "string",
+    "address": "string",
+    "avatar": {}
+  }
+}
+Response model: Domain or address information
+{
+  "result": {
+    "protocol": "string",
+    "address": "string",
+    "checkUrl": "string"
+  }
+}

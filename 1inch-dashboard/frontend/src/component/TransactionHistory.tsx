@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { History, Search, AlertCircle, RefreshCw, ExternalLink, Calendar, Hash, ArrowUpRight, ArrowDownLeft } from "lucide-react";
+import { History, Search, AlertCircle, RefreshCw, ExternalLink, Calendar, Hash, ArrowUpRight, ArrowDownLeft, Globe } from "lucide-react";
 import { useAccount, useChainId } from "wagmi";
 
 interface TransactionEvent {
@@ -23,6 +23,14 @@ interface HistoryResponse {
   [key: string]: any;
 }
 
+interface DomainInfo {
+  result: Array<{
+    protocol: string;
+    address: string;
+    checkUrl: string;
+  }>;
+}
+
 const TransactionHistory: React.FC = () => {
   const { address } = useAccount();
   const chainId = useChainId();
@@ -32,9 +40,59 @@ const TransactionHistory: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [limit, setLimit] = useState<number>(10);
   const [searchAddress, setSearchAddress] = useState<string>("");
+  const [isDomainSearch, setIsDomainSearch] = useState<boolean>(false);
+
+  // Check if domain search is supported for current chain
+  const isDomainSearchSupported = () => {
+    return chainId === 1; // Ethereum Mainnet only
+  };
+
+  // Check if input looks like a domain
+  const isDomainInput = (input: string) => {
+    return input.includes('.') && !input.startsWith('0x');
+  };
+
+  // Resolve domain to address
+  const resolveDomain = async (domain: string): Promise<string | null> => {
+    try {
+      console.log(`Resolving domain: ${domain}`);
+      const response = await fetch(`http://localhost:5000/api/${domain}/info`);
+      
+      console.log(`Domain resolution response status: ${response.status}`);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Failed to resolve domain: ${response.status}`);
+        console.error(`Error response: ${errorText}`);
+        return null;
+      }
+      
+      const data: DomainInfo = await response.json();
+      console.log(`Domain resolution result:`, data);
+      console.log(`Result array length:`, data.result?.length);
+      
+      if (data.result && data.result.length > 0) {
+        console.log(`First result item:`, data.result[0]);
+        if (data.result[0].address) {
+          console.log(`Successfully resolved domain to address: ${data.result[0].address}`);
+          return data.result[0].address;
+        } else {
+          console.log(`No address found in first result item`);
+        }
+      } else {
+        console.log(`No results found in domain resolution`);
+      }
+      
+      console.log(`No address found in domain resolution result`);
+      return null;
+    } catch (error) {
+      console.error("Error resolving domain:", error);
+      return null;
+    }
+  };
 
   const fetchHistory = async (targetAddress?: string) => {
-    const addressToSearch = targetAddress || address;
+    let addressToSearch = targetAddress || address;
     
     if (!addressToSearch) {
       setError("No wallet address available");
@@ -44,6 +102,25 @@ const TransactionHistory: React.FC = () => {
     if (!chainId || chainId <= 0) {
       setError("Invalid chain ID");
       return;
+    }
+
+    // Check if input is a domain and resolve it
+    if (isDomainInput(addressToSearch) && isDomainSearchSupported()) {
+      setIsDomainSearch(true);
+      setLoading(true);
+      setError(null);
+      
+      const resolvedAddress = await resolveDomain(addressToSearch);
+      if (resolvedAddress) {
+        addressToSearch = resolvedAddress;
+        console.log(`Resolved domain to address: ${resolvedAddress}`);
+      } else {
+        setError(`Could not resolve domain: ${addressToSearch}`);
+        setLoading(false);
+        return;
+      }
+    } else {
+      setIsDomainSearch(false);
     }
     
     setLoading(true);
@@ -59,17 +136,17 @@ const TransactionHistory: React.FC = () => {
         throw new Error(`Failed to fetch history: ${response.status}`);
       }
       
-             const data = await response.json();
-       console.log("History data:", data);
-       console.log("Requested limit:", limit, "Actual items received:", data.items?.length || 0);
-       
-       // Enforce limit on frontend if API doesn't respect it
-       if (data.items && data.items.length > limit) {
-         data.items = data.items.slice(0, limit);
-         data.total = Math.min(data.total || data.items.length, limit);
-       }
-       
-       setHistoryData(data);
+      const data = await response.json();
+      console.log("History data:", data);
+      console.log("Requested limit:", limit, "Actual items received:", data.items?.length || 0);
+      
+      // Enforce limit on frontend if API doesn't respect it
+      if (data.items && data.items.length > limit) {
+        data.items = data.items.slice(0, limit);
+        data.total = Math.min(data.total || data.items.length, limit);
+      }
+      
+      setHistoryData(data);
     } catch (error: any) {
       console.error("Error fetching history:", error);
       setError(error.message || "Failed to fetch transaction history");
@@ -85,7 +162,12 @@ const TransactionHistory: React.FC = () => {
   };
 
   const handleRefresh = () => {
-    fetchHistory();
+    // If there's a search address, use it; otherwise use connected wallet
+    if (searchAddress.trim()) {
+      fetchHistory(searchAddress.trim());
+    } else {
+      fetchHistory();
+    }
   };
 
   useEffect(() => {
@@ -170,13 +252,22 @@ const TransactionHistory: React.FC = () => {
       <div className="mb-6">
         <div className="flex items-center space-x-2 mb-3">
           <History className="w-4 h-4 text-white/60" />
-          <span className="text-white/60 text-sm">Search by Address</span>
+          <span className="text-white/60 text-sm">
+            Search by Address {isDomainSearchSupported() && "or Domain"}
+          </span>
+          {isDomainSearchSupported() && (
+            <Globe className="w-4 h-4 text-blue-400" />
+          )}
         </div>
         
         <div className="flex space-x-2">
           <input
             type="text"
-            placeholder="Enter wallet address (optional)"
+            placeholder={
+              isDomainSearchSupported() 
+                ? "Enter wallet address or domain name (e.g., vitalik.eth)" 
+                : "Enter wallet address (optional)"
+            }
             value={searchAddress}
             onChange={(e) => setSearchAddress(e.target.value)}
             className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/40 focus:outline-none focus:border-blue-500"
@@ -191,18 +282,24 @@ const TransactionHistory: React.FC = () => {
           </button>
         </div>
         
+        {isDomainSearchSupported() && (
+          <p className="text-white/40 text-xs mt-2">
+            💡 Domain search works for Ethereum Mainnet only
+          </p>
+        )}
+        
         <div className="flex items-center space-x-2 mt-3">
           <label className="text-white/60 text-sm">Limit:</label>
-                     <select
-             value={limit}
-             onChange={(e) => setLimit(Number(e.target.value))}
-             className="bg-white/10 border border-white/20 rounded-lg px-2 py-1 text-white text-sm focus:outline-none focus:border-blue-500"
-           >
-             <option value={5} className="bg-gray-800 text-white">5</option>
-             <option value={10} className="bg-gray-800 text-white">10</option>
-             <option value={20} className="bg-gray-800 text-white">20</option>
-             <option value={50} className="bg-gray-800 text-white">50</option>
-           </select>
+          <select
+            value={limit}
+            onChange={(e) => setLimit(Number(e.target.value))}
+            className="bg-white/10 border border-white/20 rounded-lg px-2 py-1 text-white text-sm focus:outline-none focus:border-blue-500"
+          >
+            <option value={5} className="bg-gray-800 text-white">5</option>
+            <option value={10} className="bg-gray-800 text-white">10</option>
+            <option value={20} className="bg-gray-800 text-white">20</option>
+            <option value={50} className="bg-gray-800 text-white">50</option>
+          </select>
         </div>
       </div>
 
@@ -210,7 +307,9 @@ const TransactionHistory: React.FC = () => {
       {loading && (
         <div className="text-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-4"></div>
-          <p className="text-white/60">Loading transaction history...</p>
+          <p className="text-white/60">
+            {isDomainSearch ? "Resolving domain..." : "Loading transaction history..."}
+          </p>
         </div>
       )}
 
@@ -221,7 +320,14 @@ const TransactionHistory: React.FC = () => {
           <p className="text-red-400 mb-2">Error loading data</p>
           <p className="text-white/60 text-sm mb-4">{error}</p>
           <button 
-            onClick={handleRefresh}
+            onClick={() => {
+              // If there's a search address, use it; otherwise use connected wallet
+              if (searchAddress.trim()) {
+                fetchHistory(searchAddress.trim());
+              } else {
+                fetchHistory();
+              }
+            }}
             className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-colors"
           >
             Try Again
@@ -277,14 +383,14 @@ const TransactionHistory: React.FC = () => {
                     </div>
                     
                     <div className="flex items-center space-x-2">
-                                             <a
-                         href={getBlockExplorerUrl(tx.details.txHash, chainId)}
-                         target="_blank"
-                         rel="noopener noreferrer"
-                         className="text-blue-400 hover:text-blue-300 transition-colors"
-                       >
-                         <ExternalLink className="w-4 h-4" />
-                       </a>
+                      <a
+                        href={getBlockExplorerUrl(tx.details.txHash, chainId)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-400 hover:text-blue-300 transition-colors"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </a>
                     </div>
                   </div>
                 </div>

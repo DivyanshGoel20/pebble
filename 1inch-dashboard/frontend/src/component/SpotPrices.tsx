@@ -98,7 +98,7 @@ const SpotPrices: React.FC = () => {
         <div>
           <input
             type="text"
-            placeholder="Enter token address)"
+            placeholder="Enter token address"
             value={customAddresses}
             onChange={(e) => setCustomAddresses(e.target.value)}
             className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/40 focus:outline-none focus:border-blue-500"
