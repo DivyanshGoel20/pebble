@@ -327,6 +327,86 @@ app.get("/history/wallet", async (req, res) => {
   }
 });
 
+// Spot Price API endpoints
+app.get("/spot-prices/whitelisted", async (req, res) => {
+  try {
+    const { chainId = 1 } = req.query;
+    
+    console.log(`Fetching whitelisted token prices for chain: ${chainId}`);
+    
+    const response = await axios.get(`https://api.1inch.dev/price/v1.1/${chainId}`, {
+      headers: {
+        'Authorization': `Bearer ${process.env.API_KEY}`,
+        'Accept': 'application/json'
+      }
+    });
+    
+    console.log(`Whitelisted prices response status: ${response.status}`);
+    res.json(response.data);
+    
+  } catch (error) {
+    console.error("Spot Price API Error:", error.response?.data || error.message);
+    res.status(500).json({ message: "Error fetching whitelisted token prices" });
+  }
+});
+
+app.post("/spot-prices/requested", async (req, res) => {
+  try {
+    const { chainId = 1 } = req.query;
+    const { tokens } = req.body;
+    
+    if (!tokens || !Array.isArray(tokens)) {
+      return res.status(400).json({ error: "Tokens array is required" });
+    }
+    
+    console.log(`Fetching requested token prices for chain: ${chainId}, tokens:`, tokens);
+    
+    const response = await axios.post(`https://api.1inch.dev/price/v1.1/${chainId}`, {
+      tokens: tokens
+    }, {
+      headers: {
+        'Authorization': `Bearer ${process.env.API_KEY}`,
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    console.log(`Requested prices response status: ${response.status}`);
+    res.json(response.data);
+    
+  } catch (error) {
+    console.error("Spot Price API Error:", error.response?.data || error.message);
+    res.status(500).json({ message: "Error fetching requested token prices" });
+  }
+});
+
+app.get("/spot-prices/addresses", async (req, res) => {
+  try {
+    const { chainId = 1, addresses } = req.query;
+    
+    if (!addresses) {
+      return res.status(400).json({ error: "Addresses parameter is required" });
+    }
+    
+    const addressArray = addresses.split(',');
+    console.log(`Fetching prices for addresses on chain: ${chainId}, addresses:`, addressArray);
+    
+    const response = await axios.get(`https://api.1inch.dev/price/v1.1/${chainId}/${addresses}`, {
+      headers: {
+        'Authorization': `Bearer ${process.env.API_KEY}`,
+        'Accept': 'application/json'
+      }
+    });
+    
+    console.log(`Addresses prices response status: ${response.status}`);
+    res.json(response.data);
+    
+  } catch (error) {
+    console.error("Spot Price API Error:", error.response?.data || error.message);
+    res.status(500).json({ message: "Error fetching token prices for addresses" });
+  }
+});
+
 // Health check endpoint
 app.get("/health", (req, res) => {
   res.json({ status: "OK", message: "Server is running" });

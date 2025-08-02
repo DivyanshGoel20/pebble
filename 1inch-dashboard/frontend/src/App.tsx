@@ -6,6 +6,7 @@ import GasPrice from './component/GasPrice'
 import TokenBalances from './component/TokenBalances'
 import TransactionTraces from './component/TransactionTraces'
 import TransactionHistory from './component/TransactionHistory'
+import SpotPrices from './component/SpotPrices'
 
 function App() {
   const { address, isConnected } = useAccount()
@@ -128,6 +129,11 @@ function App() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <TransactionTraces />
               <TransactionHistory />
+            </div>
+
+            {/* Spot Prices Row */}
+            <div className="grid grid-cols-1 gap-6">
+              <SpotPrices />
             </div>
 
             {/* Recent Activity */}

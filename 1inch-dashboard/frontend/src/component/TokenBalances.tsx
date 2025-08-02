@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Wallet, RefreshCw, AlertCircle } from "lucide-react";
 import { useAccount, useChainId, useConfig } from "wagmi";
+import { weiToUSDNumber } from "./priceUtils";
 
 interface TokenMetadata {
   balance: string;
@@ -47,11 +48,55 @@ const TokenBalances: React.FC = () => {
       const data = await response.json();
       console.log("Token balance data received:", data);
       setTokenBalances(data);
+      
+      // Fetch prices for tokens if we have balances
+      if (data && Object.keys(data).length > 0) {
+        await fetchTokenPrices(Object.keys(data));
+      }
     } catch (error) {
       console.error("Error fetching token balances:", error);
       setError("Failed to fetch token balances");
+      setTokenBalances(null); // Clear old balances on error
+      setTokenPrices({}); // Clear old prices on error
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchTokenPrices = async (tokenAddresses: string[]) => {
+    if (!chainId || chainId <= 0 || tokenAddresses.length === 0) {
+      return;
+    }
+    
+    try {
+      console.log("Fetching token prices for addresses:", tokenAddresses);
+      const response = await fetch(`http://localhost:5000/spot-prices/addresses?chainId=${chainId}&addresses=${encodeURIComponent(tokenAddresses.join(','))}`);
+      
+      if (!response.ok) {
+        console.error("Failed to fetch token prices:", response.status);
+        setTokenPrices({}); // Clear old prices on error
+        return;
+      }
+      
+      const data = await response.json();
+      console.log("Token prices data:", data);
+      
+      // Convert prices to USD format using the utility function
+      const usdPrices: {[key: string]: number} = {};
+      for (const [address, price] of Object.entries(data)) {
+        try {
+          const usdPrice = await weiToUSDNumber(price as string, chainId);
+          usdPrices[address] = usdPrice;
+        } catch (error) {
+          console.error(`Error converting price for ${address}:`, error);
+          usdPrices[address] = 0;
+        }
+      }
+      
+      setTokenPrices(usdPrices);
+    } catch (error) {
+      console.error("Error fetching token prices:", error);
+      setTokenPrices({}); // Clear old prices on error
     }
   };
 
@@ -82,10 +127,10 @@ const TokenBalances: React.FC = () => {
   };
 
   // Calculate USD value
-  const calculateUSDValue = (balance: string, decimals: number, symbol: string) => {
+  const calculateUSDValue = (balance: string, decimals: number, tokenAddress: string) => {
     const actualAmount = parseFloat(balance) / Math.pow(10, decimals);
-    const price = tokenPrices[symbol] || 0;
-    const usdValue = actualAmount * price;
+    const pricePerToken = tokenPrices[tokenAddress] || 0;
+    const usdValue = actualAmount * pricePerToken;
     return usdValue > 0 ? `$${usdValue.toFixed(2)}` : '';
   };
 
@@ -149,63 +194,63 @@ const TokenBalances: React.FC = () => {
         </div>
       </div>
       
-             {tokenBalances ? (
-         <div className="space-y-3">
-           {Object.entries(tokenBalances).length > 0 ? (
-             Object.entries(tokenBalances).map(([tokenAddress, tokenData]) => (
-               <div 
-                 key={tokenAddress}
-                 className="bg-white/5 rounded-lg p-4 border border-white/10 hover:bg-white/10 transition-colors"
-               >
-                 <div className="flex justify-between items-center">
-                   <div className="flex-1">
-                     <div className="flex items-center space-x-2">
-                       {tokenData.logoURI && (
-                         <img 
-                           src={tokenData.logoURI} 
-                           alt={tokenData.name}
-                           className="w-6 h-6 rounded-full"
-                           onError={(e) => {
-                             e.currentTarget.style.display = 'none';
-                           }}
-                         />
-                       )}
-                       <div>
-                         <div className="text-white font-medium text-sm">
-                           {tokenData.name}
-                         </div>
-                         <div className="text-white/60 text-xs">
-                           {tokenData.symbol} • {shortenAddress(tokenAddress)}
-                         </div>
-                       </div>
-                     </div>
-                   </div>
-                                       <div className="text-right">
-                      <div className="text-white font-semibold">
-                        {formatBalance(tokenData.balance, tokenData.decimals)} {tokenData.symbol}
-                      </div>
-                      {calculateUSDValue(tokenData.balance, tokenData.decimals, tokenData.symbol) && (
-                        <div className="text-white/60 text-xs">
-                          {calculateUSDValue(tokenData.balance, tokenData.decimals, tokenData.symbol)}
-                        </div>
+      {tokenBalances ? (
+        <div className="space-y-3">
+          {Object.entries(tokenBalances).length > 0 ? (
+            Object.entries(tokenBalances).map(([tokenAddress, tokenData]) => (
+              <div 
+                key={tokenAddress}
+                className="bg-white/5 rounded-lg p-4 border border-white/10 hover:bg-white/10 transition-colors"
+              >
+                <div className="flex justify-between items-center">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-2">
+                      {tokenData.logoURI && (
+                        <img 
+                          src={tokenData.logoURI} 
+                          alt={tokenData.name}
+                          className="w-6 h-6 rounded-full"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
                       )}
+                      <div>
+                        <div className="text-white font-medium text-sm">
+                          {tokenData.name}
+                        </div>
+                        <div className="text-white/60 text-xs">
+                          {tokenData.symbol} • {shortenAddress(tokenAddress)}
+                        </div>
+                      </div>
                     </div>
-                 </div>
-               </div>
-             ))
-           ) : (
-             <div className="text-center py-8">
-               <p className="text-white/60">No tokens found in this wallet</p>
-               <p className="text-white/40 text-sm">Try switching networks or check your wallet</p>
-             </div>
-           )}
-         </div>
-       ) : (
-         <div className="text-center py-8">
-           <p className="text-white/60">No token balance data available</p>
-           <p className="text-white/40 text-sm">Connect to a supported network</p>
-         </div>
-       )}
+                  </div>
+                  <div className="text-right">
+                    <div className="text-white font-semibold">
+                      {formatBalance(tokenData.balance, tokenData.decimals)} {tokenData.symbol}
+                    </div>
+                    {calculateUSDValue(tokenData.balance, tokenData.decimals, tokenAddress) && (
+                      <div className="text-white/60 text-xs">
+                        {calculateUSDValue(tokenData.balance, tokenData.decimals, tokenAddress)}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-white/60">No tokens found in this wallet</p>
+              <p className="text-white/40 text-sm">Try switching networks or check your wallet</p>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="text-center py-8">
+          <p className="text-white/60">No token balance data available</p>
+          <p className="text-white/40 text-sm">Connect to a supported network</p>
+        </div>
+      )}
     </div>
   );
 };
