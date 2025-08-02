@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { fetchNFTs } from "./api";
 import { useChainId, useConfig } from "wagmi";
+import { RefreshCw } from "lucide-react";
 
 interface NFT {
   id: string;
@@ -37,45 +38,63 @@ const NFTList: React.FC<NFTListProps> = ({ address }) => {
   // Check if current network supports NFTs
   const isNFTSupported = chainId === 1 || chainId === 100; // Ethereum or Gnosis
 
-  useEffect(() => {
+  const fetchNFTData = useCallback(async () => {
     if (!address || !isNFTSupported) {
       setNfts([]);
       return;
     }
 
-    const fetchData = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const response = await fetchNFTs(address, chainId);
-        console.log("API Response:", response);
-        
-        // Handle v2 API response structure
-        if (response.assets && Array.isArray(response.assets)) {
-          setNfts(response.assets);
-        } else if (response.data && response.data.assets) {
-          setNfts(response.data.assets);
-        } else if (Array.isArray(response)) {
-          setNfts(response);
-        } else {
-          console.log("Unexpected data structure:", response);
-          setNfts([]);
-        }
-      } catch (error) {
-        console.error("Error fetching NFTs:", error);
-        setError(error instanceof Error ? error.message : "Failed to fetch NFTs");
-      } finally {
-        setLoading(false);
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetchNFTs(address, chainId);
+      console.log("API Response:", response);
+      
+      // Handle v2 API response structure
+      if (response.assets && Array.isArray(response.assets)) {
+        setNfts(response.assets);
+      } else if (response.data && response.data.assets) {
+        setNfts(response.data.assets);
+      } else if (Array.isArray(response)) {
+        setNfts(response);
+      } else {
+        console.log("Unexpected data structure:", response);
+        setNfts([]);
       }
-    };
-
-    fetchData();
+    } catch (error) {
+      console.error("Error fetching NFTs:", error);
+      setError(error instanceof Error ? error.message : "Failed to fetch NFTs");
+    } finally {
+      setLoading(false);
+    }
   }, [address, chainId, isNFTSupported]);
+
+  const handleRefresh = () => {
+    fetchNFTData();
+  };
+
+  useEffect(() => {
+    fetchNFTData();
+  }, [fetchNFTData]);
 
   if (!address) {
     return (
       <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
-        <h3 className="text-lg font-semibold text-white mb-4">NFT Collection</h3>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold text-white">NFT Collection</h3>
+          <div className="flex items-center space-x-2">
+            {chain && (
+              <span className="text-white/60 text-sm">{chain.name}</span>
+            )}
+            <button 
+              onClick={handleRefresh}
+              disabled={loading}
+              className="bg-blue-500 hover:bg-blue-600 disabled:bg-blue-500/50 text-white px-3 py-1 rounded-lg text-xs transition-colors"
+            >
+              <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
+        </div>
         <p className="text-white/60 text-center">Connect your wallet to view your NFTs</p>
       </div>
     );
@@ -84,7 +103,21 @@ const NFTList: React.FC<NFTListProps> = ({ address }) => {
   if (!isNFTSupported) {
     return (
       <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
-        <h3 className="text-lg font-semibold text-white mb-4">NFT Collection</h3>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold text-white">NFT Collection</h3>
+          <div className="flex items-center space-x-2">
+            {chain && (
+              <span className="text-white/60 text-sm">{chain.name}</span>
+            )}
+            <button 
+              onClick={handleRefresh}
+              disabled={loading}
+              className="bg-blue-500 hover:bg-blue-600 disabled:bg-blue-500/50 text-white px-3 py-1 rounded-lg text-xs transition-colors"
+            >
+              <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
+        </div>
         <div className="text-center py-8">
           <p className="text-white/60">NFTs not supported on {chain?.name || 'this network'}</p>
           <p className="text-white/40 text-sm">Switch to Ethereum or Gnosis to view NFTs</p>
@@ -96,7 +129,21 @@ const NFTList: React.FC<NFTListProps> = ({ address }) => {
   if (loading) {
     return (
       <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
-        <h3 className="text-lg font-semibold text-white mb-4">NFT Collection</h3>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold text-white">NFT Collection</h3>
+          <div className="flex items-center space-x-2">
+            {chain && (
+              <span className="text-white/60 text-sm">{chain.name}</span>
+            )}
+            <button 
+              onClick={handleRefresh}
+              disabled={loading}
+              className="bg-blue-500 hover:bg-blue-600 disabled:bg-blue-500/50 text-white px-3 py-1 rounded-lg text-xs transition-colors"
+            >
+              <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
+        </div>
         <div className="text-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-4"></div>
           <p className="text-white/60">Loading your NFTs...</p>
@@ -108,7 +155,21 @@ const NFTList: React.FC<NFTListProps> = ({ address }) => {
   if (error) {
     return (
       <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
-        <h3 className="text-lg font-semibold text-white mb-4">NFT Collection</h3>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold text-white">NFT Collection</h3>
+          <div className="flex items-center space-x-2">
+            {chain && (
+              <span className="text-white/60 text-sm">{chain.name}</span>
+            )}
+            <button 
+              onClick={handleRefresh}
+              disabled={loading}
+              className="bg-blue-500 hover:bg-blue-600 disabled:bg-blue-500/50 text-white px-3 py-1 rounded-lg text-xs transition-colors"
+            >
+              <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
+        </div>
         <div className="text-center py-8">
           <p className="text-red-400 mb-2">Error loading NFTs</p>
           <p className="text-white/60 text-sm">{error}</p>
@@ -121,7 +182,21 @@ const NFTList: React.FC<NFTListProps> = ({ address }) => {
   if (nfts.length === 0) {
     return (
       <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
-        <h3 className="text-lg font-semibold text-white mb-4">NFT Collection</h3>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold text-white">NFT Collection (0)</h3>
+          <div className="flex items-center space-x-2">
+            {chain && (
+              <span className="text-white/60 text-sm">{chain.name}</span>
+            )}
+            <button 
+              onClick={handleRefresh}
+              disabled={loading}
+              className="bg-blue-500 hover:bg-blue-600 disabled:bg-blue-500/50 text-white px-3 py-1 rounded-lg text-xs transition-colors"
+            >
+              <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
+        </div>
         <div className="text-center py-8">
           <p className="text-white/60">No NFTs found in this wallet</p>
           <p className="text-white/40 text-sm">Try connecting a different wallet or check your NFT holdings</p>
@@ -134,9 +209,18 @@ const NFTList: React.FC<NFTListProps> = ({ address }) => {
     <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-semibold text-white">NFT Collection ({nfts.length})</h3>
-        {chain && (
-          <span className="text-white/60 text-sm">{chain.name}</span>
-        )}
+        <div className="flex items-center space-x-2">
+          {chain && (
+            <span className="text-white/60 text-sm">{chain.name}</span>
+          )}
+          <button 
+            onClick={handleRefresh}
+            disabled={loading}
+            className="bg-blue-500 hover:bg-blue-600 disabled:bg-blue-500/50 text-white px-3 py-1 rounded-lg text-xs transition-colors"
+          >
+            <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {nfts.map((nft) => {

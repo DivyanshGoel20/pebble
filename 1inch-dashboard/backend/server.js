@@ -511,6 +511,133 @@ app.get("/api/providers-data-with-avatar", async (req, res) => {
   }
 });
 
+// Swap API endpoints
+const SWAP_BASE_URL = "https://api.1inch.dev/swap/v6.1";
+
+// Check token allowance
+app.get("/api/swap/allowance", async (req, res) => {
+  try {
+    const { tokenAddress, walletAddress, chainId } = req.query;
+    
+    if (!tokenAddress || !walletAddress || !chainId) {
+      return res.status(400).json({ error: "Missing required parameters: tokenAddress, walletAddress, chainId" });
+    }
+
+    console.log(`Checking allowance for token: ${tokenAddress}, wallet: ${walletAddress}, chain: ${chainId}`);
+    
+    const apiUrl = `${SWAP_BASE_URL}/${chainId}/approve/allowance?tokenAddress=${tokenAddress}&walletAddress=${walletAddress}`;
+    console.log(`Calling 1inch API: ${apiUrl}`);
+    
+    const response = await axios.get(apiUrl, {
+      headers: {
+        Authorization: `Bearer ${process.env.API_KEY}`,
+        'Accept': 'application/json'
+      },
+    });
+    
+    console.log(`Allowance API response status: ${response.status}`);
+    console.log(`Allowance API response data:`, response.data);
+    
+    res.json(response.data);
+  } catch (error) {
+    console.error("Allowance API Error Details:");
+    console.error("Error message:", error.message);
+    console.error("Error status:", error.response?.status);
+    console.error("Error data:", error.response?.data);
+    
+    res.status(500).json({
+      error: "Failed to check token allowance",
+      details: error.response?.data || error.message
+    });
+  }
+});
+
+// Get approval transaction
+app.get("/api/swap/approve", async (req, res) => {
+  try {
+    const { tokenAddress, amount, chainId } = req.query;
+    
+    if (!tokenAddress || !amount || !chainId) {
+      return res.status(400).json({ error: "Missing required parameters: tokenAddress, amount, chainId" });
+    }
+
+    console.log(`Getting approval transaction for token: ${tokenAddress}, amount: ${amount}, chain: ${chainId}`);
+    
+    const apiUrl = `${SWAP_BASE_URL}/${chainId}/approve/transaction?tokenAddress=${tokenAddress}&amount=${amount}`;
+    console.log(`Calling 1inch API: ${apiUrl}`);
+    
+    const response = await axios.get(apiUrl, {
+      headers: {
+        Authorization: `Bearer ${process.env.API_KEY}`,
+        'Accept': 'application/json'
+      },
+    });
+    
+    console.log(`Approval API response status: ${response.status}`);
+    console.log(`Approval API response data:`, response.data);
+    
+    res.json(response.data);
+  } catch (error) {
+    console.error("Approval API Error Details:");
+    console.error("Error message:", error.message);
+    console.error("Error status:", error.response?.status);
+    console.error("Error data:", error.response?.data);
+    
+    res.status(500).json({
+      error: "Failed to get approval transaction",
+      details: error.response?.data || error.message
+    });
+  }
+});
+
+// Get swap transaction
+app.get("/api/swap/quote", async (req, res) => {
+  try {
+    const { src, dst, amount, from, chainId, slippage = "1", disableEstimate = "false", allowPartialFill = "false" } = req.query;
+    
+    if (!src || !dst || !amount || !from || !chainId) {
+      return res.status(400).json({ error: "Missing required parameters: src, dst, amount, from, chainId" });
+    }
+
+    console.log(`Getting swap quote for: ${src} -> ${dst}, amount: ${amount}, from: ${from}, chain: ${chainId}`);
+    
+    const params = new URLSearchParams({
+      src,
+      dst,
+      amount,
+      from,
+      slippage,
+      disableEstimate,
+      allowPartialFill
+    });
+    
+    const apiUrl = `${SWAP_BASE_URL}/${chainId}/swap?${params.toString()}`;
+    console.log(`Calling 1inch API: ${apiUrl}`);
+    
+    const response = await axios.get(apiUrl, {
+      headers: {
+        Authorization: `Bearer ${process.env.API_KEY}`,
+        'Accept': 'application/json'
+      },
+    });
+    
+    console.log(`Swap API response status: ${response.status}`);
+    console.log(`Swap API response data:`, response.data);
+    
+    res.json(response.data);
+  } catch (error) {
+    console.error("Swap API Error Details:");
+    console.error("Error message:", error.message);
+    console.error("Error status:", error.response?.status);
+    console.error("Error data:", error.response?.data);
+    
+    res.status(500).json({
+      error: "Failed to get swap quote",
+      details: error.response?.data || error.message
+    });
+  }
+});
+
 // Health check endpoint
 app.get("/health", (req, res) => {
   res.json({ status: "OK", message: "Server is running" });
