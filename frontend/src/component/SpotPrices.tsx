@@ -131,7 +131,7 @@ const SpotPrices: React.FC = () => {
 
       {addressPrices && (
         <div className="space-y-3">
-          {Object.entries(addressPrices).map(([address, price]) => (
+          {Object.entries(addressPrices).map(([address]) => (
             <div key={address} className="bg-white/5 rounded-lg p-3 border border-white/10">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
