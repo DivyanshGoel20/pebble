@@ -100,13 +100,6 @@ const TransactionTraces: React.FC = () => {
     console.log("TransactionTraces initialized with chainId:", chainId);
   }, [chainId]);
 
-  const formatNumber = (num: number) => {
-    if (typeof num !== 'number' || isNaN(num)) {
-      return '0';
-    }
-    return num.toLocaleString();
-  };
-
   const handleTabChange = (tab: 'block' | 'transaction') => {
     setActiveTab(tab);
     setError(null); // Clear errors when switching tabs

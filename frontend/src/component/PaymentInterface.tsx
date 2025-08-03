@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAccount, useChainId, useConfig, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
-import { Send, User, Coins, AlertCircle, CheckCircle, Loader2, RefreshCw } from "lucide-react";
+import { Send, User, AlertCircle, CheckCircle, Loader2 } from "lucide-react";
 import { parseEther, parseUnits } from "viem";
 
 interface Token {
@@ -34,7 +34,6 @@ const PaymentInterface: React.FC = () => {
   const [resolvedAddress, setResolvedAddress] = useState<string | null>(null);
   const [debounceTimer, setDebounceTimer] = useState<number | null>(null);
   const [userTokenBalances, setUserTokenBalances] = useState<{[tokenAddress: string]: any}>({});
-  const [userTokenPrices, setUserTokenPrices] = useState<{[key: string]: number}>({});
   const [transactionHash, setTransactionHash] = useState<string | null>(null);
 
   // Wagmi hooks for transaction
@@ -111,10 +110,7 @@ const PaymentInterface: React.FC = () => {
         const data = await response.json();
         setUserTokenBalances(data);
         
-        // Fetch prices for tokens
-        if (data && Object.keys(data).length > 0) {
-          await fetchUserTokenPrices(Object.keys(data));
-        }
+
       } else {
         console.error("Failed to fetch user token balances");
         setUserTokenBalances({});
@@ -125,25 +121,7 @@ const PaymentInterface: React.FC = () => {
     }
   };
 
-  const fetchUserTokenPrices = async (tokenAddresses: string[]) => {
-    if (!chainId || chainId <= 0 || tokenAddresses.length === 0) {
-      return;
-    }
-    
-    try {
-      const response = await fetch(`https://pebble-19ip.onrender.com/spot-prices/addresses?chainId=${chainId}&addresses=${encodeURIComponent(tokenAddresses.join(','))}`);
-      
-      if (response.ok) {
-        const data = await response.json();
-        setUserTokenPrices(data);
-      } else {
-        setUserTokenPrices({});
-      }
-    } catch (error) {
-      console.error("Error fetching user token prices:", error);
-      setUserTokenPrices({});
-    }
-  };
+
 
   // Get tokens that user actually has
   const getUserTokens = (): Token[] => {
@@ -354,10 +332,7 @@ const PaymentInterface: React.FC = () => {
     return token ? token.symbol : "Unknown";
   };
 
-  const getTokenName = (tokenAddress: string): string => {
-    const token = userTokens.find(t => t.address === tokenAddress);
-    return token ? token.name : "Unknown Token";
-  };
+
 
   const getUserBalance = (tokenAddress: string): string => {
     if (tokenAddress === "0x0000000000000000000000000000000000000000") {

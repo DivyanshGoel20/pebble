@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAccount, useChainId, useConfig } from "wagmi";
-import { Search, Coins, AlertCircle, CheckCircle, Loader2, RefreshCw, ExternalLink, Info } from "lucide-react";
+import { Search, Coins, AlertCircle, Loader2, RefreshCw, ExternalLink, Info } from "lucide-react";
 
 interface TokenInfo {
   address: string;

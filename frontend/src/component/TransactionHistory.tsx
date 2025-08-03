@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { History, Search, AlertCircle, RefreshCw, ExternalLink, Calendar, Hash, ArrowUpRight, ArrowDownLeft, Globe } from "lucide-react";
+import { History, Search, AlertCircle, RefreshCw, ExternalLink, Hash, ArrowUpRight, ArrowDownLeft, Globe } from "lucide-react";
 import { useAccount, useChainId } from "wagmi";
 
 interface TransactionEvent {

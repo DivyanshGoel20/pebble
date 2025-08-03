@@ -227,9 +227,7 @@ const NFTList: React.FC<NFTListProps> = ({ address }) => {
           // Handle different field names from v2 API
           const nftName = nft.name || `NFT #${nft.token_id || nft.id}`;
           const nftImage = nft.image_url;
-          const contractAddress = nft.contract_address || nft.asset_contract?.address;
-          const tokenId = nft.token_id || nft.id?.split(':')?.[2] || nft.id;
-          
+  
           return (
             <div 
               key={nft.id} 

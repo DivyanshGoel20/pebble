@@ -64,26 +64,6 @@ const SwapInterface: React.FC = () => {
     setApprovalTransaction(null);
   }, [amount]);
 
-  // Common native token addresses for different chains
-  const getNativeToken = (): Token => {
-    switch (chainId) {
-      case 1: // Ethereum
-        return { address: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", symbol: "ETH", decimals: 18, name: "Ethereum" };
-      case 137: // Polygon
-        return { address: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", symbol: "MATIC", decimals: 18, name: "Polygon" };
-      case 42161: // Arbitrum
-        return { address: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", symbol: "ETH", decimals: 18, name: "Ethereum" };
-      case 8453: // Base
-        return { address: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", symbol: "ETH", decimals: 18, name: "Ethereum" };
-      case 43114: // Avalanche
-        return { address: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", symbol: "AVAX", decimals: 18, name: "Avalanche" };
-      case 100: // Gnosis
-        return { address: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", symbol: "XDAI", decimals: 18, name: "xDai" };
-      default:
-        return { address: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", symbol: "ETH", decimals: 18, name: "Ethereum" };
-    }
-  };
-
   const searchToken = async (query: string): Promise<Token | null> => {
     if (!query.trim()) return null;
 

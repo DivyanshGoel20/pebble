@@ -1,6 +1,6 @@
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { useAccount, useBalance } from 'wagmi'
-import { Wallet, TrendingUp, Coins, Activity, Image, ArrowLeftRight, BarChart3, History, Settings, Home } from 'lucide-react'
+import { Wallet, Coins, Image, ArrowLeftRight, BarChart3, History, Home } from 'lucide-react'
 import { useState } from 'react'
 import NFTList from './component/NFTList'
 import GasPrice from './component/GasPrice'
