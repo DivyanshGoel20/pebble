@@ -142,10 +142,8 @@ function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                <TrendingUp className="w-5 h-5 text-white" />
-              </div>
-              <h1 className="text-xl font-bold text-white">DeFi Dashboard</h1>
+              <img src="/logo.png" alt="Pebble Logo" className="w-8 h-8 rounded-lg" />
+              <h1 className="text-xl font-bold text-white">Pebble</h1>
             </div>
             <ConnectButton />
           </div>
@@ -161,7 +159,7 @@ function App() {
               <Wallet className="w-12 h-12 text-white/60" />
             </div>
             <h2 className="text-3xl font-bold text-white mb-4">
-              Welcome to Your DeFi Dashboard
+              Welcome to Pebble
             </h2>
             <p className="text-white/60 text-lg mb-8 max-w-md mx-auto">
               Connect your wallet to view your personalized DeFi portfolio, token balances, and trading data.
