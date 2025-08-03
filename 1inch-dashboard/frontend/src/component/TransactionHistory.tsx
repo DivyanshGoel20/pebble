@@ -39,6 +39,7 @@ const TransactionHistory: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [limit, setLimit] = useState<number>(10);
+  const [currentPage, setCurrentPage] = useState<number>(1);
   const [searchAddress, setSearchAddress] = useState<string>("");
   const [isDomainSearch, setIsDomainSearch] = useState<boolean>(false);
 
@@ -98,6 +99,9 @@ const TransactionHistory: React.FC = () => {
       setError("No wallet address available");
       return;
     }
+
+    // Reset to page 1 when fetching new data
+    setCurrentPage(1);
     
     if (!chainId || chainId <= 0) {
       setError("Invalid chain ID");
@@ -140,11 +144,18 @@ const TransactionHistory: React.FC = () => {
       console.log("History data:", data);
       console.log("Requested limit:", limit, "Actual items received:", data.items?.length || 0);
       
-      // Enforce limit on frontend if API doesn't respect it
-      if (data.items && data.items.length > limit) {
-        data.items = data.items.slice(0, limit);
-        data.total = Math.min(data.total || data.items.length, limit);
-      }
+             // Ensure we have the correct data structure
+       if (!data.items) {
+         data.items = [];
+       }
+       
+       // Set total to the requested limit (this is the total transactions we want to show)
+       data.total = limit;
+       
+       // If API returns more items than requested limit, slice them
+       if (data.items.length > limit) {
+         data.items = data.items.slice(0, limit);
+       }
       
       setHistoryData(data);
     } catch (error: any) {
@@ -179,7 +190,12 @@ const TransactionHistory: React.FC = () => {
   // Separate effect for limit changes
   useEffect(() => {
     if (address && chainId && chainId > 0 && historyData) {
-      fetchHistory();
+      // If there's a search address, use it; otherwise use connected wallet
+      if (searchAddress.trim()) {
+        fetchHistory(searchAddress.trim());
+      } else {
+        fetchHistory();
+      }
     }
   }, [limit]);
 
@@ -228,6 +244,19 @@ const TransactionHistory: React.FC = () => {
       default:
         return `https://etherscan.io/tx/${txHash}`; // fallback
     }
+  };
+
+  // Pagination calculations - Always show 10 per page
+  const itemsPerPage = 10;
+  const totalPages = historyData ? Math.ceil((historyData.total || historyData.items?.length || 0) / itemsPerPage) : 0;
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentTransactions = historyData?.items?.slice(startIndex, endIndex) || [];
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    // Scroll to top of the component
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
@@ -344,9 +373,9 @@ const TransactionHistory: React.FC = () => {
             </h4>
           </div>
           
-          {historyData.items && historyData.items.length > 0 ? (
+          {currentTransactions && currentTransactions.length > 0 ? (
             <div className="space-y-3">
-              {historyData.items.map((tx) => (
+              {currentTransactions.map((tx) => (
                 <div key={tx.id} className="bg-white/5 rounded-lg p-4 border border-white/10 hover:bg-white/10 transition-colors">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
@@ -401,6 +430,63 @@ const TransactionHistory: React.FC = () => {
               <History className="w-8 h-8 text-white/40 mx-auto mb-4" />
               <p className="text-white/60">No transaction history found</p>
               <p className="text-white/40 text-sm">This wallet has no recent transactions</p>
+            </div>
+          )}
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && currentTransactions.length > 0 && (
+            <div className="flex items-center justify-between mt-6 pt-6 border-t border-white/10">
+                              <div className="text-white/60 text-sm">
+                  Showing {startIndex + 1}-{Math.min(endIndex, historyData?.items?.length || 0)} of {historyData?.total || historyData?.items?.length || 0} transactions
+                </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="bg-white/10 hover:bg-white/20 disabled:bg-white/5 disabled:text-white/30 text-white px-3 py-2 rounded-lg text-sm transition-colors flex items-center space-x-1"
+                >
+                  <span>←</span>
+                  <span>Previous</span>
+                </button>
+                
+                <div className="flex items-center space-x-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = currentPage - 2 + i;
+                    }
+                    
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => handlePageChange(pageNum)}
+                        className={`px-3 py-2 rounded-lg text-sm transition-colors ${
+                          currentPage === pageNum
+                            ? 'bg-blue-500 text-white'
+                            : 'bg-white/10 hover:bg-white/20 text-white/60 hover:text-white'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                </div>
+                
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="bg-white/10 hover:bg-white/20 disabled:bg-white/5 disabled:text-white/30 text-white px-3 py-2 rounded-lg text-sm transition-colors flex items-center space-x-1"
+                >
+                  <span>Next</span>
+                  <span>→</span>
+                </button>
+              </div>
             </div>
           )}
         </div>

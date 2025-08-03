@@ -1,6 +1,7 @@
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { useAccount, useBalance } from 'wagmi'
-import { Wallet, TrendingUp, Coins, Activity, Image } from 'lucide-react'
+import { Wallet, TrendingUp, Coins, Activity, Image, ArrowLeftRight, BarChart3, History, Settings, Home } from 'lucide-react'
+import { useState } from 'react'
 import NFTList from './component/NFTList'
 import GasPrice from './component/GasPrice'
 import TokenBalances from './component/TokenBalances'
@@ -11,11 +12,128 @@ import SwapInterface from './component/SwapInterface'
 import PaymentInterface from './component/PaymentInterface'
 import TokenDetails from './component/TokenDetails'
 
+// Tab configuration
+const tabs = [
+  { id: 'overview', name: 'Overview', icon: Home },
+  { id: 'swap', name: 'Swap & Trade', icon: ArrowLeftRight },
+  { id: 'analytics', name: 'Analytics', icon: BarChart3 },
+  { id: 'history', name: 'Transaction History', icon: History },
+  { id: 'nfts', name: 'NFTs & Assets', icon: Image },
+]
+
 function App() {
   const { address, isConnected } = useAccount()
   const { data: balance } = useBalance({
     address,
   })
+  const [activeTab, setActiveTab] = useState('overview')
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'overview':
+        return (
+          <div className="space-y-6">
+            {/* Quick Stats Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <TokenBalances />
+              <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-8 border border-white/10">
+                <div className="flex items-center space-x-4 mb-6">
+                  <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center">
+                    <Coins className="w-8 h-8 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-white font-bold text-xl">Wallet Balance</h3>
+                    <p className="text-white/60 text-sm">Your current holdings</p>
+                  </div>
+                </div>
+                <div className="text-center py-6">
+                  <div className="text-4xl font-bold text-white mb-2">
+                    {balance ? `${parseFloat(balance.formatted).toFixed(4)}` : '0.0000'}
+                  </div>
+                  <div className="text-white/60 text-xl font-medium">
+                    {balance ? balance.symbol : 'ETH'}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Market Data */}
+            <div className="grid grid-cols-1 gap-6">
+              <SpotPrices />
+            </div>
+
+            {/* Quick Actions */}
+            <div className="grid grid-cols-1 gap-6">
+              <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
+                <h3 className="text-lg font-semibold text-white mb-4">Quick Actions</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <button 
+                    onClick={() => setActiveTab('swap')}
+                    className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-3 rounded-lg text-sm transition-colors flex items-center justify-center space-x-2"
+                  >
+                    <ArrowLeftRight className="w-4 h-4" />
+                    <span>Start Trading</span>
+                  </button>
+                  <button 
+                    onClick={() => setActiveTab('history')}
+                    className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-3 rounded-lg text-sm transition-colors flex items-center justify-center space-x-2"
+                  >
+                    <History className="w-4 h-4" />
+                    <span>View History</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+
+      case 'swap':
+        return (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <SwapInterface />
+              <GasPrice />
+            </div>
+            <div className="grid grid-cols-1 gap-6">
+              <PaymentInterface />
+            </div>
+          </div>
+        )
+
+      case 'analytics':
+        return (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 gap-6">
+              <TokenDetails />
+            </div>
+          </div>
+        )
+
+      case 'history':
+        return (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <TransactionHistory />
+              <TransactionTraces />
+            </div>
+          </div>
+        )
+
+      case 'nfts':
+        return (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 gap-6">
+              <NFTList address={address} />
+            </div>
+          </div>
+        )
+
+
+
+      default:
+        return null
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
@@ -27,7 +145,7 @@ function App() {
               <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
                 <TrendingUp className="w-5 h-5 text-white" />
               </div>
-              <h1 className="text-xl font-bold text-white">1inch DeFi Dashboard</h1>
+              <h1 className="text-xl font-bold text-white">DeFi Dashboard</h1>
             </div>
             <ConnectButton />
           </div>
@@ -46,54 +164,43 @@ function App() {
               Welcome to Your DeFi Dashboard
             </h2>
             <p className="text-white/60 text-lg mb-8 max-w-md mx-auto">
-              Connect your wallet to view your personalized DeFi portfolio, token balances, and 1inch-powered data.
+              Connect your wallet to view your personalized DeFi portfolio, token balances, and trading data.
             </p>
             <div className="flex justify-center">
               <ConnectButton />
             </div>
           </div>
         ) : (
-          // Connected State - Dashboard
-          <div className="space-y-8">
-            {/* Dashboard Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {/* Token Balances Component */}
-              <TokenBalances />
+          // Connected State - Dashboard with Tabs
+          <div className="space-y-6">
+            {/* Tab Navigation */}
+            <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-2">
+              <nav className="flex space-x-1" aria-label="Tabs">
+                {tabs.map((tab) => {
+                  const Icon = tab.icon
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`
+                        flex items-center space-x-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200
+                        ${activeTab === tab.id
+                          ? 'bg-white/10 text-white shadow-lg'
+                          : 'text-white/60 hover:text-white hover:bg-white/5'
+                        }
+                      `}
+                    >
+                      <Icon className="w-4 h-4" />
+                      <span>{tab.name}</span>
+                    </button>
+                  )
+                })}
+              </nav>
             </div>
 
-            {/* Gas Price and NFT Collection Row */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Gas Price Component */}
-              <GasPrice />
-              
-              {/* NFT Collection Section */}
-              <NFTList address={address} />
-            </div>
-
-            {/* Swap Interface Row */}
-            <div className="grid grid-cols-1 gap-6">
-              <SwapInterface />
-            </div>
-
-            {/* Payment Interface Row */}
-            <div className="grid grid-cols-1 gap-6">
-              <PaymentInterface />
-            </div>
-
-            {/* Token Details Row */}
-            <div className="grid grid-cols-1 gap-6">
-              <TokenDetails />
-            </div>
-
-            {/* Transaction Traces and History Row */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <TransactionTraces />
-              <TransactionHistory />
-            </div>
-
-            {/* Spot Prices Row */}
-            <div className="grid grid-cols-1 gap-6">
-              <SpotPrices />
+            {/* Tab Content */}
+            <div className="min-h-[600px]">
+              {renderTabContent()}
             </div>
           </div>
         )}
