@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { useAccount, useChainId, useConfig } from "wagmi";
-import { ArrowRight, RefreshCw, AlertCircle, CheckCircle, Loader2 } from "lucide-react";
+import { useAccount, useChainId, useConfig, useWalletClient, usePublicClient } from "wagmi";
+import { ArrowRight, RefreshCw, AlertCircle, CheckCircle, Loader2, Search } from "lucide-react";
+import { parseEther, parseUnits, formatEther, formatUnits } from "viem";
 
 interface Token {
   address: string;
@@ -9,13 +10,24 @@ interface Token {
   name: string;
 }
 
-interface SwapQuote {
+interface QuoteResponse {
+  dstAmount: string;
+}
+
+interface SwapTransaction {
   to: string;
   data: string;
   value: string;
   gas: string;
   gasPrice: string;
-  gasLimit: string;
+}
+
+interface ApprovalTransaction {
+  to: string;
+  data: string;
+  value: string;
+  gas: string;
+  gasPrice: string;
 }
 
 const SwapInterface: React.FC = () => {
@@ -23,77 +35,375 @@ const SwapInterface: React.FC = () => {
   const chainId = useChainId();
   const config = useConfig();
   const chain = config.chains.find(c => c.id === chainId);
+  const { data: walletClient } = useWalletClient();
+  const publicClient = usePublicClient();
 
   const [fromToken, setFromToken] = useState<string>("");
   const [toToken, setToToken] = useState<string>("");
+  const [fromTokenInfo, setFromTokenInfo] = useState<Token | null>(null);
+  const [toTokenInfo, setToTokenInfo] = useState<Token | null>(null);
   const [amount, setAmount] = useState<string>("");
   const [slippage, setSlippage] = useState<string>("1");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [quote, setQuote] = useState<SwapQuote | null>(null);
+  const [quote, setQuote] = useState<QuoteResponse | null>(null);
+  const [swapTransaction, setSwapTransaction] = useState<SwapTransaction | null>(null);
+  const [approvalTransaction, setApprovalTransaction] = useState<ApprovalTransaction | null>(null);
   const [allowance, setAllowance] = useState<string>("0");
-  const [allowanceLoading, setAllowanceLoading] = useState(false);
+  const [searchingToken, setSearchingToken] = useState(false);
 
-  // Common token addresses for different chains
-  const getCommonTokens = (): Token[] => {
+  // Check allowance when component mounts or when address/chainId changes
+  useEffect(() => {
+    if (address && chainId && fromTokenInfo) {
+      checkAllowance();
+    }
+  }, [address, chainId, fromTokenInfo]);
+
+  // Clear approval transaction when amount changes
+  useEffect(() => {
+    setApprovalTransaction(null);
+  }, [amount]);
+
+  // Common native token addresses for different chains
+  const getNativeToken = (): Token => {
     switch (chainId) {
       case 1: // Ethereum
-        return [
-          { address: "0x0000000000000000000000000000000000000000", symbol: "ETH", decimals: 18, name: "Ethereum" },
-          { address: "0xdAC17F958D2ee523a2206206994597C13D831ec7", symbol: "USDT", decimals: 6, name: "Tether USD" },
-          { address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", symbol: "USDC", decimals: 6, name: "USD Coin" },
-          { address: "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599", symbol: "WBTC", decimals: 8, name: "Wrapped Bitcoin" }
-        ];
+        return { address: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", symbol: "ETH", decimals: 18, name: "Ethereum" };
       case 137: // Polygon
-        return [
-          { address: "0x0000000000000000000000000000000000001010", symbol: "MATIC", decimals: 18, name: "Polygon" },
-          { address: "0xc2132D05D31c914a87C6611C10748AEb04B58e8F", symbol: "USDT", decimals: 6, name: "Tether USD" },
-          { address: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174", symbol: "USDC", decimals: 6, name: "USD Coin" },
-          { address: "0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6", symbol: "WBTC", decimals: 8, name: "Wrapped Bitcoin" }
-        ];
+        return { address: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", symbol: "MATIC", decimals: 18, name: "Polygon" };
       case 42161: // Arbitrum
-        return [
-          { address: "0x0000000000000000000000000000000000000000", symbol: "ETH", decimals: 18, name: "Ethereum" },
-          { address: "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9", symbol: "USDT", decimals: 6, name: "Tether USD" },
-          { address: "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8", symbol: "USDC", decimals: 6, name: "USD Coin" },
-          { address: "0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f", symbol: "WBTC", decimals: 8, name: "Wrapped Bitcoin" }
-        ];
+        return { address: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", symbol: "ETH", decimals: 18, name: "Ethereum" };
       case 8453: // Base
-        return [
-          { address: "0x0000000000000000000000000000000000000000", symbol: "ETH", decimals: 18, name: "Ethereum" },
-          { address: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", symbol: "USDC", decimals: 6, name: "USD Coin" },
-          { address: "0x4200000000000000000000000000000000000006", symbol: "WETH", decimals: 18, name: "Wrapped Ethereum" }
-        ];
+        return { address: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", symbol: "ETH", decimals: 18, name: "Ethereum" };
       case 43114: // Avalanche
-        return [
-          { address: "0x0000000000000000000000000000000000000000", symbol: "AVAX", decimals: 18, name: "Avalanche" },
-          { address: "0x9702230A8Ea53601f5cD2dc00fDBc13d4dF4A8c7", symbol: "USDT", decimals: 6, name: "Tether USD" },
-          { address: "0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E", symbol: "USDC", decimals: 6, name: "USD Coin" }
-        ];
+        return { address: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", symbol: "AVAX", decimals: 18, name: "Avalanche" };
       case 100: // Gnosis
-        return [
-          { address: "0x0000000000000000000000000000000000000000", symbol: "XDAI", decimals: 18, name: "xDai" },
-          { address: "0x4ECaBa5870353805a9F068101A40E0f32ed605C6", symbol: "USDT", decimals: 6, name: "Tether USD" },
-          { address: "0xDDAfbb505ad214D7b80b1f830fcCc89B60fb7A83", symbol: "USDC", decimals: 6, name: "USD Coin" }
-        ];
+        return { address: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", symbol: "XDAI", decimals: 18, name: "xDai" };
       default:
-        return [];
+        return { address: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", symbol: "ETH", decimals: 18, name: "Ethereum" };
     }
   };
 
-  const commonTokens = getCommonTokens();
+  const searchToken = async (query: string): Promise<Token | null> => {
+    if (!query.trim()) return null;
 
-  const checkAllowance = async () => {
-    if (!address || !fromToken || !chainId) return;
-
-    setAllowanceLoading(true);
+    setSearchingToken(true);
     try {
-      const response = await fetch(
-        `http://localhost:5000/api/swap/allowance?tokenAddress=${fromToken}&walletAddress=${address}&chainId=${chainId}`
-      );
+      // First, check if it's a common token name/symbol
+      const commonTokens: { [key: string]: Token } = {
+        'eth': { address: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", symbol: "ETH", decimals: 18, name: "Ethereum" },
+        'ethereum': { address: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", symbol: "ETH", decimals: 18, name: "Ethereum" },
+        'usdt': { address: "0xdAC17F958D2ee523a2206206994597C13D831ec7", symbol: "USDT", decimals: 6, name: "Tether USD" },
+        'usdc': { address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", symbol: "USDC", decimals: 6, name: "USD Coin" },
+        'wbtc': { address: "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599", symbol: "WBTC", decimals: 8, name: "Wrapped Bitcoin" },
+        'matic': { address: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", symbol: "MATIC", decimals: 18, name: "Polygon" },
+        'polygon': { address: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", symbol: "MATIC", decimals: 18, name: "Polygon" },
+        'avax': { address: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", symbol: "AVAX", decimals: 18, name: "Avalanche" },
+        'avalanche': { address: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", symbol: "AVAX", decimals: 18, name: "Avalanche" },
+        'xdai': { address: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", symbol: "XDAI", decimals: 18, name: "xDai" },
+        'weth': { address: "0x4200000000000000000000000000000000000006", symbol: "WETH", decimals: 18, name: "Wrapped Ethereum" }
+      };
+
+      const normalizedQuery = query.toLowerCase().trim();
+      
+      // Check common tokens first
+      if (commonTokens[normalizedQuery]) {
+        return commonTokens[normalizedQuery];
+      }
+
+      // Check if it's an Ethereum address
+      const isAddress = /^0x[a-fA-F0-9]{40}$/.test(query);
+      
+      if (isAddress) {
+        // If it's an address, get token details directly
+        const response = await fetch(
+          `http://localhost:5000/api/token-details/search?query=${query}&chainId=${chainId}`
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          return {
+            address: data.address,
+            symbol: data.symbol,
+            decimals: data.decimals,
+            name: data.name
+          };
+        }
+      } else {
+        // If it's a name/symbol, search for it
+        const response = await fetch(
+          `http://localhost:5000/api/token/search?query=${query}&chainId=${chainId}&limit=5`
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.tokens && data.tokens.length > 0) {
+            const token = data.tokens[0];
+            return {
+              address: token.address,
+              symbol: token.symbol,
+              decimals: token.decimals,
+              name: token.name
+            };
+          }
+        }
+      }
+      
+      return null;
+    } catch (error) {
+      console.error("Error searching token:", error);
+      return null;
+    } finally {
+      setSearchingToken(false);
+    }
+  };
+
+  const handleFromTokenSearch = async (query: string) => {
+    setFromToken(query);
+    setFromTokenInfo(null);
+    setQuote(null);
+    setSwapTransaction(null);
+    setApprovalTransaction(null);
+    
+    if (query.trim()) {
+      const token = await searchToken(query);
+      if (token) {
+        setFromTokenInfo(token);
+        setFromToken(token.address);
+        // Check allowance for the new token
+        setTimeout(() => checkAllowance(), 100);
+      }
+    }
+  };
+
+  const handleToTokenSearch = async (query: string) => {
+    setToToken(query);
+    setToTokenInfo(null);
+    setQuote(null);
+    setSwapTransaction(null);
+    
+    if (query.trim()) {
+      const token = await searchToken(query);
+      if (token) {
+        setToTokenInfo(token);
+        setToToken(token.address);
+      }
+    }
+  };
+
+  const getSwapQuote = async () => {
+    if (!fromTokenInfo || !toTokenInfo || !amount || !chainId || !address) {
+      setError("Please fill in all required fields");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setQuote(null);
+    setSwapTransaction(null);
+
+    try {
+      // Convert amount to the proper format (wei/smallest unit)
+      let formattedAmount: string;
+      if (fromTokenInfo.address === "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee") {
+        // Native token (ETH, MATIC, etc.)
+        formattedAmount = parseEther(amount).toString();
+      } else {
+        // ERC20 token
+        formattedAmount = parseUnits(amount, fromTokenInfo.decimals).toString();
+      }
+
+      console.log("Quote parameters:", {
+        src: fromTokenInfo.address,
+        dst: toTokenInfo.address,
+        amount: formattedAmount,
+        chainId: chainId.toString()
+      });
+
+      const params = new URLSearchParams({
+        src: fromTokenInfo.address,
+        dst: toTokenInfo.address,
+        amount: formattedAmount,
+        chainId: chainId.toString()
+      });
+
+      const response = await fetch(`http://localhost:5000/api/swap/quote?${params.toString()}`);
       
       if (response.ok) {
         const data = await response.json();
+        console.log("Quote response:", data);
+        
+        if (data.dstAmount) {
+          setQuote(data);
+          console.log("Quote received:", data);
+        } else {
+          console.error("Unexpected response structure:", data);
+          setError("Unexpected response structure from quote API");
+        }
+      } else {
+        const errorData = await response.json();
+        console.error("Quote API error:", errorData);
+        setError(errorData.error || "Failed to get quote");
+      }
+    } catch (error) {
+      console.error("Error getting quote:", error);
+      setError("Failed to get quote");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getSwapTransaction = async () => {
+    if (!fromTokenInfo || !toTokenInfo || !amount || !chainId || !address) {
+      setError("Please fill in all required fields");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setSwapTransaction(null);
+
+    try {
+      // Convert amount to the proper format (wei/smallest unit)
+      let formattedAmount: string;
+      if (fromTokenInfo.address === "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee") {
+        // Native token (ETH, MATIC, etc.)
+        formattedAmount = parseEther(amount).toString();
+      } else {
+        // ERC20 token
+        formattedAmount = parseUnits(amount, fromTokenInfo.decimals).toString();
+      }
+
+      console.log("Transaction parameters:", {
+        src: fromTokenInfo.address,
+        dst: toTokenInfo.address,
+        amount: formattedAmount,
+        from: address,
+        chainId: chainId.toString(),
+        slippage: slippage
+      });
+
+      const params = new URLSearchParams({
+        src: fromTokenInfo.address,
+        dst: toTokenInfo.address,
+        amount: formattedAmount,
+        from: address,
+        chainId: chainId.toString(),
+        slippage: slippage
+      });
+
+      const response = await fetch(`http://localhost:5000/api/swap/transaction?${params.toString()}`);
+      console.log("Transaction API response status:", response.status);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log("Transaction response:", data);
+        
+        // Check if the response has the expected structure
+        if (data.tx) {
+          setSwapTransaction(data.tx);
+          console.log("Swap transaction received:", data.tx);
+        } else {
+          console.error("Unexpected transaction response structure:", data);
+          setError("Unexpected response structure from transaction API");
+        }
+      } else {
+        const errorData = await response.json();
+        console.error("Transaction API error:", errorData);
+        setError(errorData.error || "Failed to get swap transaction");
+      }
+    } catch (error) {
+      console.error("Error getting swap transaction:", error);
+      setError(`Failed to get swap transaction: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSwap = async () => {
+    if (!swapTransaction || !walletClient || !publicClient || !address) {
+      setError("Wallet not connected or transaction not available");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      console.log("Executing swap with transaction:", swapTransaction);
+      
+      // Prepare transaction data
+      const transaction = {
+        to: swapTransaction.to as `0x${string}`,
+        data: swapTransaction.data as `0x${string}`,
+        value: BigInt(swapTransaction.value || "0"),
+        gas: BigInt(swapTransaction.gas || "0"),
+        gasPrice: BigInt(swapTransaction.gasPrice || "0")
+      };
+
+      console.log("Prepared transaction:", transaction);
+
+      // Send the transaction
+      const hash = await walletClient.sendTransaction(transaction);
+      
+      console.log("Transaction sent with hash:", hash);
+      
+      // Wait for transaction confirmation
+      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      
+      console.log("Transaction confirmed:", receipt);
+      
+      setError(null);
+      alert(`Swap transaction successful! Hash: ${hash}`);
+      
+      // Clear the quote and transaction after successful execution
+      setQuote(null);
+      setSwapTransaction(null);
+      setAmount("");
+      
+    } catch (error) {
+      console.error("Error executing swap:", error);
+      setError(`Failed to execute swap: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatTokenAmount = (amount: string, decimals: number): string => {
+    try {
+      if (decimals === 18) {
+        return formatEther(BigInt(amount));
+      } else {
+        return formatUnits(BigInt(amount), decimals);
+      }
+    } catch {
+      return amount;
+    }
+  };
+
+  const checkAllowance = async () => {
+    if (!fromTokenInfo || !address || !chainId) {
+      return;
+    }
+
+    // Skip allowance check for native tokens
+    if (fromTokenInfo.address === "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee") {
+      setAllowance("999999999999999999999999999999");
+      return;
+    }
+
+    try {
+      const params = new URLSearchParams({
+        tokenAddress: fromTokenInfo.address,
+        walletAddress: address,
+        chainId: chainId.toString()
+      });
+
+      const response = await fetch(`http://localhost:5000/api/swap/allowance?${params.toString()}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log("Allowance response:", data);
         setAllowance(data.allowance || "0");
       } else {
         console.error("Failed to check allowance");
@@ -102,74 +412,115 @@ const SwapInterface: React.FC = () => {
     } catch (error) {
       console.error("Error checking allowance:", error);
       setAllowance("0");
-    } finally {
-      setAllowanceLoading(false);
     }
   };
 
-  const getSwapQuote = async () => {
-    if (!address || !fromToken || !toToken || !amount || !chainId) {
+  const getApprovalTransaction = async () => {
+    if (!fromTokenInfo || !amount || !chainId) {
       setError("Please fill in all required fields");
       return;
     }
 
     setLoading(true);
     setError(null);
-    setQuote(null);
+    setApprovalTransaction(null);
 
     try {
-      const params = new URLSearchParams({
-        src: fromToken,
-        dst: toToken,
-        amount: amount,
-        from: address,
-        chainId: chainId.toString(),
-        slippage: slippage
+      // Convert amount to the proper format (wei/smallest unit)
+      let formattedAmount: string;
+      if (fromTokenInfo.address === "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee") {
+        // Native token (ETH, MATIC, etc.)
+        formattedAmount = parseEther(amount).toString();
+      } else {
+        // ERC20 token
+        formattedAmount = parseUnits(amount, fromTokenInfo.decimals).toString();
+      }
+
+      console.log("Approval parameters:", {
+        tokenAddress: fromTokenInfo.address,
+        amount: formattedAmount,
+        chainId: chainId.toString()
       });
 
-      const response = await fetch(`http://localhost:5000/api/swap/quote?${params.toString()}`);
+      const params = new URLSearchParams({
+        tokenAddress: fromTokenInfo.address,
+        amount: formattedAmount,
+        chainId: chainId.toString()
+      });
+
+      const response = await fetch(`http://localhost:5000/api/swap/approve?${params.toString()}`);
       
       if (response.ok) {
         const data = await response.json();
-        setQuote(data.tx);
-        console.log("Swap quote:", data);
+        console.log("Approval response:", data);
+        
+        if (data.to && data.data) {
+          setApprovalTransaction(data);
+          console.log("Approval transaction received:", data);
+        } else {
+          console.error("Unexpected approval response structure:", data);
+          setError("Unexpected response structure from approval API");
+        }
       } else {
         const errorData = await response.json();
-        setError(errorData.error || "Failed to get swap quote");
+        console.error("Approval API error:", errorData);
+        setError(errorData.error || "Failed to get approval transaction");
       }
     } catch (error) {
-      console.error("Error getting swap quote:", error);
-      setError("Failed to get swap quote");
+      console.error("Error getting approval transaction:", error);
+      setError(`Failed to get approval transaction: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSwap = async () => {
-    if (!quote) return;
+  const handleApproval = async () => {
+    if (!approvalTransaction || !walletClient || !publicClient || !address) {
+      setError("Wallet not connected or approval transaction not available");
+      return;
+    }
 
     setLoading(true);
+    setError(null);
+
     try {
-      // Here you would typically use wagmi's useWriteContract or similar
-      // to send the transaction with the quote data
-      console.log("Executing swap with quote:", quote);
+      console.log("Executing approval with transaction:", approvalTransaction);
       
-      // For now, we'll just show a success message
+      // Prepare transaction data
+      const transaction = {
+        to: approvalTransaction.to as `0x${string}`,
+        data: approvalTransaction.data as `0x${string}`,
+        value: BigInt(approvalTransaction.value || "0"),
+        gas: BigInt(approvalTransaction.gas || "0"),
+        gasPrice: BigInt(approvalTransaction.gasPrice || "0")
+      };
+
+      console.log("Prepared approval transaction:", transaction);
+
+      // Send the transaction
+      const hash = await walletClient.sendTransaction(transaction);
+      
+      console.log("Approval transaction sent with hash:", hash);
+      
+      // Wait for transaction confirmation
+      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      
+      console.log("Approval transaction confirmed:", receipt);
+      
       setError(null);
-      alert("Swap transaction prepared! Check your wallet to confirm.");
+      alert(`Approval transaction successful! Hash: ${hash}`);
+      
+      // Clear the approval transaction and check allowance again
+      setApprovalTransaction(null);
+      await checkAllowance();
+      
     } catch (error) {
-      console.error("Error executing swap:", error);
-      setError("Failed to execute swap");
+      console.error("Error executing approval:", error);
+      setError(`Failed to execute approval: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    if (fromToken && address && chainId) {
-      checkAllowance();
-    }
-  }, [fromToken, address, chainId]);
 
   if (!address) {
     return (
@@ -195,18 +546,26 @@ const SwapInterface: React.FC = () => {
         {/* From Token */}
         <div className="space-y-2">
           <label className="text-white/80 text-sm font-medium">From Token</label>
-          <select
-            value={fromToken}
-            onChange={(e) => setFromToken(e.target.value)}
-            className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500"
-          >
-            <option value="">Select token</option>
-            {commonTokens.map((token) => (
-              <option key={token.address} value={token.address}>
-                {token.symbol} - {token.name}
-              </option>
-            ))}
-          </select>
+          <div className="relative">
+            <input
+              type="text"
+              value={fromToken}
+              onChange={(e) => handleFromTokenSearch(e.target.value)}
+              placeholder="Search token name, symbol, or address..."
+              className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 pl-10 text-white placeholder-white/40 focus:outline-none focus:border-blue-500"
+            />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white/40" />
+          </div>
+          {fromTokenInfo && (
+            <div className="text-green-400 text-xs">
+              ✓ {fromTokenInfo.name} ({fromTokenInfo.symbol})
+            </div>
+          )}
+          {fromToken && !fromTokenInfo && !searchingToken && (
+            <div className="text-red-400 text-xs">
+              ❌ Token not found or not available for swapping
+            </div>
+          )}
         </div>
 
         {/* Amount */}
@@ -229,18 +588,26 @@ const SwapInterface: React.FC = () => {
         {/* To Token */}
         <div className="space-y-2">
           <label className="text-white/80 text-sm font-medium">To Token</label>
-          <select
-            value={toToken}
-            onChange={(e) => setToToken(e.target.value)}
-            className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500"
-          >
-            <option value="">Select token</option>
-            {commonTokens.map((token) => (
-              <option key={token.address} value={token.address}>
-                {token.symbol} - {token.name}
-              </option>
-            ))}
-          </select>
+          <div className="relative">
+            <input
+              type="text"
+              value={toToken}
+              onChange={(e) => handleToTokenSearch(e.target.value)}
+              placeholder="Search token name, symbol, or address..."
+              className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 pl-10 text-white placeholder-white/40 focus:outline-none focus:border-blue-500"
+            />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white/40" />
+          </div>
+          {toTokenInfo && (
+            <div className="text-green-400 text-xs">
+              ✓ {toTokenInfo.name} ({toTokenInfo.symbol})
+            </div>
+          )}
+          {toToken && !toTokenInfo && !searchingToken && (
+            <div className="text-red-400 text-xs">
+              ❌ Token not found or not available for swapping
+            </div>
+          )}
         </div>
 
         {/* Slippage */}
@@ -249,54 +616,89 @@ const SwapInterface: React.FC = () => {
           <input
             type="number"
             value={slippage}
-            onChange={(e) => setSlippage(e.target.value)}
+            onChange={(e) => {
+              const value = e.target.value;
+              const numValue = parseInt(value);
+              if (value === "" || (numValue >= 1 && numValue <= 50)) {
+                setSlippage(value);
+              }
+            }}
             placeholder="1"
+            min="1"
+            max="50"
             className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/40 focus:outline-none focus:border-blue-500"
           />
+          <p className="text-white/40 text-xs">Must be between 1 and 50</p>
         </div>
 
-        {/* Allowance Info */}
-        {fromToken && (
-          <div className="bg-white/5 rounded-lg p-3">
-            <div className="flex items-center justify-between">
-              <span className="text-white/60 text-sm">Current Allowance:</span>
-              <div className="flex items-center space-x-2">
-                {allowanceLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin text-white/60" />
-                ) : (
-                  <span className="text-white text-sm">{allowance}</span>
-                )}
-                <button
-                  onClick={checkAllowance}
-                  className="text-blue-400 hover:text-blue-300 text-sm"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+                 {/* Error Display */}
+         {error && (
+           <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+             <div className="flex items-center space-x-2">
+               <AlertCircle className="w-4 h-4 text-red-400" />
+               <span className="text-red-400 text-sm">{error}</span>
+             </div>
+           </div>
+         )}
 
-        {/* Error Display */}
-        {error && (
-          <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
-            <div className="flex items-center space-x-2">
-              <AlertCircle className="w-4 h-4 text-red-400" />
-              <span className="text-red-400 text-sm">{error}</span>
-            </div>
-          </div>
-        )}
+         {/* Allowance Display */}
+         {fromTokenInfo && fromTokenInfo.address !== "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" && (
+           <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
+             <div className="flex items-center space-x-2 mb-2">
+               <AlertCircle className="w-4 h-4 text-yellow-400" />
+               <span className="text-yellow-400 text-sm font-medium">Token Allowance</span>
+             </div>
+             <div className="text-white/60 text-xs space-y-1">
+               <div>Current Allowance: {formatTokenAmount(allowance, fromTokenInfo.decimals)} {fromTokenInfo.symbol}</div>
+               <div>Required Amount: {amount} {fromTokenInfo.symbol}</div>
+               {BigInt(allowance) < BigInt(parseUnits(amount || "0", fromTokenInfo.decimals)) && (
+                 <div className="text-red-400">⚠️ Approval required before swapping</div>
+               )}
+             </div>
+           </div>
+         )}
+
+         {/* Approval Transaction Display */}
+         {approvalTransaction && (
+           <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-3">
+             <div className="flex items-center space-x-2 mb-2">
+               <CheckCircle className="w-4 h-4 text-orange-400" />
+               <span className="text-orange-400 text-sm font-medium">Approval Ready</span>
+             </div>
+             <div className="text-white/60 text-xs space-y-1">
+               <div>Gas: {approvalTransaction.gas}</div>
+               <div>Gas Price: {approvalTransaction.gasPrice}</div>
+               <div>Value: {approvalTransaction.value}</div>
+               <div>To: {approvalTransaction.to}</div>
+             </div>
+           </div>
+         )}
 
         {/* Quote Display */}
-        {quote && (
+        {quote && toTokenInfo && !swapTransaction && (
+          <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
+            <div className="flex items-center space-x-2 mb-2">
+              <CheckCircle className="w-4 h-4 text-blue-400" />
+              <span className="text-blue-400 text-sm font-medium">Quote Received</span>
+            </div>
+            <div className="text-white/60 text-xs space-y-1">
+              <div>You will receive: {formatTokenAmount(quote.dstAmount, toTokenInfo.decimals)} {toTokenInfo.symbol}</div>
+            </div>
+          </div>
+        )}
+
+        {/* Swap Transaction Display */}
+        {swapTransaction && (
           <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
             <div className="flex items-center space-x-2 mb-2">
               <CheckCircle className="w-4 h-4 text-green-400" />
-              <span className="text-green-400 text-sm font-medium">Swap Quote Ready</span>
+              <span className="text-green-400 text-sm font-medium">Ready to Execute Swap</span>
             </div>
-            <div className="text-white/60 text-xs">
-              <div>Gas Limit: {quote.gasLimit}</div>
-              <div>Gas Price: {quote.gasPrice}</div>
+            <div className="text-white/60 text-xs space-y-1">
+              <div>Gas: {swapTransaction.gas}</div>
+              <div>Gas Price: {swapTransaction.gasPrice}</div>
+              <div>Value: {swapTransaction.value} wei</div>
+              <div className="truncate">To: {swapTransaction.to}</div>
             </div>
           </div>
         )}
@@ -305,7 +707,7 @@ const SwapInterface: React.FC = () => {
         <div className="flex space-x-3">
           <button
             onClick={getSwapQuote}
-            disabled={loading || !fromToken || !toToken || !amount}
+            disabled={loading || !fromTokenInfo || !toTokenInfo || !amount || searchingToken}
             className="flex-1 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-500/50 text-white px-4 py-2 rounded-lg text-sm transition-colors flex items-center justify-center space-x-2"
           >
             {loading ? (
@@ -316,13 +718,61 @@ const SwapInterface: React.FC = () => {
             <span>Get Quote</span>
           </button>
 
-          {quote && (
+          {/* Approval Button - Show if approval is needed */}
+          {fromTokenInfo && fromTokenInfo.address !== "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" && 
+           BigInt(allowance) < BigInt(parseUnits(amount || "0", fromTokenInfo.decimals)) && 
+           !approvalTransaction && (
+            <button
+              onClick={getApprovalTransaction}
+              disabled={loading || !fromTokenInfo || !amount}
+              className="flex-1 bg-orange-500 hover:bg-orange-600 disabled:bg-orange-500/50 text-white px-4 py-2 rounded-lg text-sm transition-colors"
+            >
+              {loading ? "Processing..." : "Get Approval"}
+            </button>
+          )}
+
+          {/* Execute Approval Button */}
+          {approvalTransaction && (
+            <button
+              onClick={handleApproval}
+              disabled={loading}
+              className="flex-1 bg-orange-500 hover:bg-orange-600 disabled:bg-orange-500/50 text-white px-4 py-2 rounded-lg text-sm transition-colors"
+            >
+              {loading ? "Processing..." : "Execute Approval"}
+            </button>
+          )}
+
+          {/* Get Transaction Button - Only show if approval is not needed or already approved */}
+          {quote && !swapTransaction && 
+           (fromTokenInfo?.address === "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" || 
+            BigInt(allowance) >= BigInt(parseUnits(amount || "0", fromTokenInfo?.decimals || 18))) && (
+            <button
+              onClick={getSwapTransaction}
+              disabled={loading}
+              className="flex-1 bg-purple-500 hover:bg-purple-600 disabled:bg-purple-500/50 text-white px-4 py-2 rounded-lg text-sm transition-colors flex items-center justify-center space-x-2"
+            >
+              {loading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <ArrowRight className="w-4 h-4" />
+              )}
+              <span>Build Transaction</span>
+            </button>
+          )}
+
+          {/* Execute Swap Button */}
+          {swapTransaction && (
             <button
               onClick={handleSwap}
               disabled={loading}
-              className="flex-1 bg-green-500 hover:bg-green-600 disabled:bg-green-500/50 text-white px-4 py-2 rounded-lg text-sm transition-colors"
+              className="flex-1 bg-green-500 hover:bg-green-600 disabled:bg-green-500/50 text-white px-4 py-2 rounded-lg text-sm transition-colors flex items-center justify-center space-x-2"
             >
-              {loading ? "Processing..." : "Execute Swap"}
+              {loading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <CheckCircle className="w-4 h-4" />
+              )}
+              <span>Execute Swap</span>
             </button>
           )}
         </div>

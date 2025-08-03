@@ -590,50 +590,226 @@ app.get("/api/swap/approve", async (req, res) => {
   }
 });
 
-// Get swap transaction
+// Get best quote
+app.get("/api/swap/best-quote", async (req, res) => {
+  try {
+    const { src, dst, amount, chainId } = req.query;
+    
+    if (!src || !dst || !amount || !chainId) {
+      return res.status(400).json({ error: "Missing required parameters: src, dst, amount, chainId" });
+    }
+
+    console.log(`Getting best quote for: ${src} -> ${dst}, amount: ${amount}, chain: ${chainId}`);
+    
+    const config = {
+      headers: {
+        Authorization: `Bearer ${process.env.API_KEY}`,
+        'Accept': 'application/json'
+      },
+      params: {
+        src: src,
+        dst: dst,
+        amount: amount
+      },
+      paramsSerializer: {
+        indexes: null
+      }
+    };
+    
+    const apiUrl = `${SWAP_BASE_URL}/${chainId}/quote`;
+    console.log(`Calling 1inch API: ${apiUrl}`);
+    console.log(`With params:`, config.params);
+    
+    const response = await axios.get(apiUrl, config);
+    
+    console.log(`Best quote API response status: ${response.status}`);
+    console.log(`Best quote API response data:`, response.data);
+    
+    res.json(response.data);
+  } catch (error) {
+    console.error("Best Quote API Error Details:");
+    console.error("Error message:", error.message);
+    console.error("Error status:", error.response?.status);
+    console.error("Error data:", error.response?.data);
+    
+    res.status(500).json({
+      error: "Failed to get best quote",
+      details: error.response?.data || error.message
+    });
+  }
+});
+
+// Get quote (best price)
 app.get("/api/swap/quote", async (req, res) => {
   try {
-    const { src, dst, amount, from, chainId, slippage = "1", disableEstimate = "false", allowPartialFill = "false" } = req.query;
+    const { src, dst, amount, chainId } = req.query;
+    
+    if (!src || !dst || !amount || !chainId) {
+      return res.status(400).json({ error: "Missing required parameters: src, dst, amount, chainId" });
+    }
+
+    console.log(`Getting quote for: ${src} -> ${dst}, amount: ${amount}, chain: ${chainId}`);
+    
+    // Use the exact format from your example
+    const config = {
+      headers: {
+        Authorization: `Bearer ${process.env.API_KEY}`,
+        'Accept': 'application/json'
+      },
+      params: {
+        src: src,
+        dst: dst,
+        amount: amount
+      },
+      paramsSerializer: {
+        indexes: null
+      }
+    };
+    
+    const apiUrl = `${SWAP_BASE_URL}/${chainId}/quote`;
+    console.log(`Calling 1inch API: ${apiUrl}`);
+    console.log(`With params:`, config.params);
+    
+    const response = await axios.get(apiUrl, config);
+    
+    console.log(`Quote API response status: ${response.status}`);
+    console.log(`Quote API response data:`, response.data);
+    
+    res.json(response.data);
+  } catch (error) {
+    console.error("Quote API Error Details:");
+    console.error("Error message:", error.message);
+    console.error("Error status:", error.response?.status);
+    console.error("Error data:", error.response?.data);
+    
+    res.status(500).json({
+      error: "Failed to get quote",
+      details: error.response?.data || error.message
+    });
+  }
+});
+
+// Get swap transaction 
+app.get("/api/swap/transaction", async (req, res) => {
+  try {
+    const { src, dst, amount, from, chainId, slippage = "1" } = req.query;
     
     if (!src || !dst || !amount || !from || !chainId) {
       return res.status(400).json({ error: "Missing required parameters: src, dst, amount, from, chainId" });
     }
 
-    console.log(`Getting swap quote for: ${src} -> ${dst}, amount: ${amount}, from: ${from}, chain: ${chainId}`);
+    console.log(`Getting swap transaction for: ${src} -> ${dst}, amount: ${amount}, from: ${from}, chain: ${chainId}, slippage: ${slippage}`);
+    console.log(`API Key present: ${!!process.env.API_KEY}`);
     
-    const params = new URLSearchParams({
-      src,
-      dst,
-      amount,
-      from,
-      slippage,
-      disableEstimate,
-      allowPartialFill
-    });
-    
-    const apiUrl = `${SWAP_BASE_URL}/${chainId}/swap?${params.toString()}`;
-    console.log(`Calling 1inch API: ${apiUrl}`);
-    
-    const response = await axios.get(apiUrl, {
+    // Validate slippage between 1 and 50
+    const slippageNum = parseInt(slippage);
+    console.log(`Slippage validation: ${slippage} -> ${slippageNum}%`);
+    if (slippageNum < 1 || slippageNum > 50) {
+      return res.status(400).json({ error: "Slippage must be between 1 and 50" });
+    }
+
+    // Use the exact format from the working example
+    const params = {
+      src: src,
+      dst: dst,
+      amount: amount,
+      from: from,
+      origin: from, // Important: origin should be same as from
+      slippage: slippageNum
+    };
+
+    const config = {
       headers: {
         Authorization: `Bearer ${process.env.API_KEY}`,
         'Accept': 'application/json'
       },
-    });
+      params: params,
+      paramsSerializer: {
+        indexes: null
+      }
+    };
+    
+    const apiUrl = `${SWAP_BASE_URL}/${chainId}/swap`;
+    console.log(`Calling 1inch API: ${apiUrl}`);
+    console.log(`With params:`, params);
+    
+    const response = await axios.get(apiUrl, config);
     
     console.log(`Swap API response status: ${response.status}`);
-    console.log(`Swap API response data:`, response.data);
+    console.log(`Swap API response data:`, JSON.stringify(response.data, null, 2));
     
+    // Check if response contains slippage information
+    if (response.data && response.data.tx) {
+      console.log(`Transaction details - To: ${response.data.tx.to}`);
+      console.log(`Transaction details - Data length: ${response.data.tx.data ? response.data.tx.data.length : 'N/A'}`);
+      console.log(`Transaction details - Value: ${response.data.tx.value}`);
+      console.log(`Transaction details - Gas: ${response.data.tx.gas}`);
+      console.log(`Transaction details - Gas Price: ${response.data.tx.gasPrice}`);
+      
+      // Check if there's any slippage info in the response
+      if (response.data.slippage) {
+        console.log(`1inch API returned slippage: ${response.data.slippage}`);
+      }
+      if (response.data.dstAmount) {
+        console.log(`1inch API returned dstAmount: ${response.data.dstAmount}`);
+      }
+    }
+    
+    // The 1inch API should return the transaction data directly
     res.json(response.data);
   } catch (error) {
     console.error("Swap API Error Details:");
     console.error("Error message:", error.message);
     console.error("Error status:", error.response?.status);
     console.error("Error data:", error.response?.data);
+    console.error("Request config:", error.config);
+    
+    res.status(error.response?.status || 500).json({
+      error: "Failed to get swap transaction",
+      details: error.response?.data || error.message,
+      apiUrl: `${SWAP_BASE_URL}/${req.query.chainId}/swap`,
+      params: {
+        src: req.query.src,
+        dst: req.query.dst,
+        amount: req.query.amount,
+        from: req.query.from,
+        origin: req.query.from,
+        slippage: req.query.slippage
+      }
+    });
+  }
+});
+
+// Execute swap transaction
+app.post("/api/swap/execute", async (req, res) => {
+  try {
+    const { txData, chainId } = req.body;
+    
+    if (!txData || !chainId) {
+      return res.status(400).json({ error: "Missing required parameters: txData, chainId" });
+    }
+
+    console.log(`Executing swap transaction on chain: ${chainId}`);
+    console.log(`Transaction data:`, txData);
+    
+    // Import viem dynamically since it's not installed in the backend yet
+    // For now, we'll return the transaction data for the frontend to handle
+    // In a production environment, you'd want to install viem and handle the transaction here
+    
+    res.json({
+      success: true,
+      message: "Transaction data prepared for execution",
+      txData: txData,
+      chainId: chainId
+    });
+    
+  } catch (error) {
+    console.error("Swap Execution Error Details:");
+    console.error("Error message:", error.message);
     
     res.status(500).json({
-      error: "Failed to get swap quote",
-      details: error.response?.data || error.message
+      error: "Failed to execute swap",
+      details: error.message
     });
   }
 });
