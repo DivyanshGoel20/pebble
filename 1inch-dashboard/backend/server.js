@@ -638,6 +638,226 @@ app.get("/api/swap/quote", async (req, res) => {
   }
 });
 
+// Token API endpoints
+const TOKEN_BASE_URL = "https://api.1inch.dev/token";
+const TOKEN_DETAILS_BASE_URL = "https://api.1inch.dev/token-details";
+
+// Search tokens by name/symbol
+app.get("/api/token/search", async (req, res) => {
+  try {
+    const { query, chainId, limit = 10 } = req.query;
+    
+    if (!query || !chainId) {
+      return res.status(400).json({ error: "Missing required parameters: query, chainId" });
+    }
+
+    console.log(`Searching tokens for query: ${query}, chain: ${chainId}`);
+    
+    // Use the actual chain ID for token search (no override for Base/Arbitrum)
+    let effectiveChainId = chainId;
+    
+    const params = {
+      query,
+      limit: parseInt(limit),
+      ignore_listed: "false"
+    };
+    
+    const apiUrl = `${TOKEN_BASE_URL}/v1.2/${effectiveChainId}/search`;
+    console.log(`Calling 1inch Token API: ${apiUrl}`);
+    console.log(`With params:`, params);
+    
+    const response = await axios.get(apiUrl, {
+      headers: {
+        Authorization: `Bearer ${process.env.API_KEY}`,
+        'Accept': 'application/json'
+      },
+      params: params
+    });
+    
+    console.log(`Token search API response status: ${response.status}`);
+    console.log(`Token search API response data:`, response.data);
+    
+    // Check if we have tokens in the response
+    if (response.data && response.data.tokens) {
+      console.log(`Found ${response.data.tokens.length} tokens`);
+      response.data.tokens.forEach((token, index) => {
+        console.log(`Token ${index + 1}: ${token.name} (${token.symbol}) - ${token.address}`);
+      });
+    } else {
+      console.log(`No tokens found in response`);
+    }
+    
+    res.json(response.data);
+  } catch (error) {
+    console.error("Token Search API Error Details:");
+    console.error("Error message:", error.message);
+    console.error("Error status:", error.response?.status);
+    console.error("Error data:", error.response?.data);
+    
+    res.status(500).json({
+      error: "Failed to search tokens",
+      details: error.response?.data || error.message
+    });
+  }
+});
+
+// Get native token details by chain ID
+app.get("/api/token-details/native/:chainId", async (req, res) => {
+  try {
+    const { chainId } = req.params;
+    
+    if (!chainId) {
+      return res.status(400).json({ error: "Missing required parameter: chainId" });
+    }
+
+    // For Base and Arbitrum, use Ethereum (chainId 1) to fetch ETH details
+    let effectiveChainId = chainId;
+    if (chainId === "8453" || chainId === "42161") {
+      effectiveChainId = "1";
+      console.log(`Base/Arbitrum detected, using Ethereum chainId (1) for native token details`);
+    }
+
+    console.log(`Getting native token details for chain: ${chainId} (effective: ${effectiveChainId})`);
+    
+    const apiUrl = `${TOKEN_DETAILS_BASE_URL}/v1.0/details/${effectiveChainId}`;
+    console.log(`Calling 1inch Token Details API: ${apiUrl}`);
+    
+    const response = await axios.get(apiUrl, {
+      headers: {
+        Authorization: `Bearer ${process.env.API_KEY}`,
+        'Accept': 'application/json'
+      },
+    });
+    
+    console.log(`Token Details API response status: ${response.status}`);
+    console.log(`Token Details API response data:`, response.data);
+    
+    res.json(response.data);
+  } catch (error) {
+    console.error("Token Details API Error Details:");
+    console.error("Error message:", error.message);
+    console.error("Error status:", error.response?.status);
+    console.error("Error data:", error.response?.data);
+    
+    res.status(500).json({
+      error: "Failed to fetch native token details",
+      details: error.response?.data || error.message
+    });
+  }
+});
+
+// Enhanced token search and details endpoint
+app.get("/api/token-details/search", async (req, res) => {
+  try {
+    const { query, chainId } = req.query;
+    
+    if (!query || !chainId) {
+      return res.status(400).json({ error: "Missing required parameters: query, chainId" });
+    }
+
+    console.log(`Enhanced token search for query: ${query}, chain: ${chainId}`);
+    
+    // Use the actual chain ID for token search (no override for Base/Arbitrum)
+    let effectiveChainId = chainId;
+    
+    console.log(`Using effective chain ID: ${effectiveChainId} for token search`);
+
+    // Check if query is an Ethereum address (starts with 0x and has 42 characters)
+    const isAddress = /^0x[a-fA-F0-9]{40}$/.test(query);
+    console.log(`Query "${query}" is address: ${isAddress}`);
+    
+    let tokenAddress;
+    
+    if (isAddress) {
+      // If it's an address, use it directly
+      console.log(`Query is an address: ${query}`);
+      tokenAddress = query;
+    } else {
+      // If it's a name/symbol, search for it first
+      console.log(`Query is a name/symbol, searching for: ${query}`);
+      
+      try {
+        const searchUrl = `${TOKEN_BASE_URL}/v1.2/${effectiveChainId}/search`;
+        console.log(`Calling Token Search API: ${searchUrl}`);
+        
+        const searchResponse = await axios.get(searchUrl, {
+          headers: {
+            Authorization: `Bearer ${process.env.API_KEY}`,
+            'Accept': 'application/json'
+          },
+          params: {
+            query: query,
+            limit: 1, // Get only the first result
+            ignore_listed: "false"
+          }
+        });
+        
+        console.log(`Token Search API response status: ${searchResponse.status}`);
+        console.log(`Token Search API response data:`, searchResponse.data);
+        
+        if (searchResponse.data.tokens && searchResponse.data.tokens.length > 0) {
+          tokenAddress = searchResponse.data.tokens[0].address;
+          console.log(`Found token address: ${tokenAddress}`);
+          console.log(`Token details: ${searchResponse.data.tokens[0].name} (${searchResponse.data.tokens[0].symbol})`);
+        } else {
+          console.log(`No tokens found in search response`);
+          return res.status(404).json({ error: "No tokens found for the given query" });
+        }
+      } catch (searchError) {
+        console.error("Token Search API Error:", searchError.response?.data || searchError.message);
+        return res.status(500).json({
+          error: "Failed to search for token",
+          details: searchError.response?.data || searchError.message
+        });
+      }
+    }
+    
+    // Now fetch token details using the address
+    console.log(`Fetching token details for address: ${tokenAddress} on chain: ${effectiveChainId}`);
+    
+    const detailsUrl = `${TOKEN_DETAILS_BASE_URL}/v1.0/details/${effectiveChainId}/${tokenAddress}`;
+    console.log(`Calling Token Details API: ${detailsUrl}`);
+    
+    try {
+      const detailsResponse = await axios.get(detailsUrl, {
+        headers: {
+          Authorization: `Bearer ${process.env.API_KEY}`,
+          'Accept': 'application/json'
+        },
+      });
+      
+      console.log(`Token Details API response status: ${detailsResponse.status}`);
+      console.log(`Token Details API response data:`, detailsResponse.data);
+      
+      res.json(detailsResponse.data);
+    } catch (detailsError) {
+      console.error("Token Details API Error Details:");
+      console.error("Error message:", detailsError.message);
+      console.error("Error status:", detailsError.response?.status);
+      console.error("Error data:", detailsError.response?.data);
+      console.error("Full error:", detailsError);
+      
+      return res.status(500).json({
+        error: "Failed to fetch token details",
+        details: detailsError.response?.data || detailsError.message,
+        chainId: effectiveChainId,
+        tokenAddress: tokenAddress
+      });
+    }
+    
+  } catch (error) {
+    console.error("Enhanced Token Details API Error Details:");
+    console.error("Error message:", error.message);
+    console.error("Error status:", error.response?.status);
+    console.error("Error data:", error.response?.data);
+    
+    res.status(500).json({
+      error: "Failed to fetch token details",
+      details: error.response?.data || error.message
+    });
+  }
+});
+
 // Health check endpoint
 app.get("/health", (req, res) => {
   res.json({ status: "OK", message: "Server is running" });

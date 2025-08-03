@@ -9,6 +9,7 @@ import TransactionHistory from './component/TransactionHistory'
 import SpotPrices from './component/SpotPrices'
 import SwapInterface from './component/SwapInterface'
 import PaymentInterface from './component/PaymentInterface'
+import TokenDetails from './component/TokenDetails'
 
 function App() {
   const { address, isConnected } = useAccount()
@@ -77,6 +78,11 @@ function App() {
             {/* Payment Interface Row */}
             <div className="grid grid-cols-1 gap-6">
               <PaymentInterface />
+            </div>
+
+            {/* Token Details Row */}
+            <div className="grid grid-cols-1 gap-6">
+              <TokenDetails />
             </div>
 
             {/* Transaction Traces and History Row */}
