@@ -105,7 +105,7 @@ const PaymentInterface: React.FC = () => {
     if (!address || !chainId) return;
     
     try {
-      const response = await fetch(`http://localhost:5000/token-balances?walletAddress=${address}&chainId=${chainId}`);
+      const response = await fetch(`https://pebble-19ip.onrender.com/token-balances?walletAddress=${address}&chainId=${chainId}`);
       
       if (response.ok) {
         const data = await response.json();
@@ -131,7 +131,7 @@ const PaymentInterface: React.FC = () => {
     }
     
     try {
-      const response = await fetch(`http://localhost:5000/spot-prices/addresses?chainId=${chainId}&addresses=${encodeURIComponent(tokenAddresses.join(','))}`);
+      const response = await fetch(`https://pebble-19ip.onrender.com/spot-prices/addresses?chainId=${chainId}&addresses=${encodeURIComponent(tokenAddresses.join(','))}`);
       
       if (response.ok) {
         const data = await response.json();
@@ -207,7 +207,7 @@ const PaymentInterface: React.FC = () => {
   const resolveDomain = async (domain: string): Promise<string | null> => {
     try {
       console.log(`Resolving domain: ${domain}`);
-      const response = await fetch(`http://localhost:5000/api/${domain}/info`);
+      const response = await fetch(`https://pebble-19ip.onrender.com/api/${domain}/info`);
       
       console.log(`Domain resolution response status: ${response.status}`);
       

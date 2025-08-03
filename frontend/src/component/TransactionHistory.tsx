@@ -57,7 +57,7 @@ const TransactionHistory: React.FC = () => {
   const resolveDomain = async (domain: string): Promise<string | null> => {
     try {
       console.log(`Resolving domain: ${domain}`);
-      const response = await fetch(`http://localhost:5000/api/${domain}/info`);
+      const response = await fetch(`https://pebble-19ip.onrender.com/api/${domain}/info`);
       
       console.log(`Domain resolution response status: ${response.status}`);
       
@@ -132,7 +132,7 @@ const TransactionHistory: React.FC = () => {
     
     try {
       console.log("Fetching history for:", { addressToSearch, chainId, limit });
-      const response = await fetch(`http://localhost:5000/history/wallet?address=${addressToSearch}&chainId=${chainId}&limit=${limit}`);
+      const response = await fetch(`https://pebble-19ip.onrender.com/history/wallet?address=${addressToSearch}&chainId=${chainId}&limit=${limit}`);
       
       if (!response.ok) {
         const errorText = await response.text();

@@ -1,5 +1,5 @@
 // API functions for fetching NFT data from our backend
-const API_BASE_URL = 'http://localhost:5000';
+const API_BASE_URL = 'https://pebble-19ip.onrender.com';
 
 // Add timeout and retry logic
 const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeout = 10000) => {

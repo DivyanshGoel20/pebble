@@ -117,7 +117,7 @@ const SwapInterface: React.FC = () => {
       if (isAddress) {
         // If it's an address, get token details directly
         const response = await fetch(
-          `http://localhost:5000/api/token-details/search?query=${query}&chainId=${chainId}`
+          `https://pebble-19ip.onrender.com/api/token-details/search?query=${query}&chainId=${chainId}`
         );
         
         if (response.ok) {
@@ -132,7 +132,7 @@ const SwapInterface: React.FC = () => {
       } else {
         // If it's a name/symbol, search for it
         const response = await fetch(
-          `http://localhost:5000/api/token/search?query=${query}&chainId=${chainId}&limit=5`
+          `https://pebble-19ip.onrender.com/api/token/search?query=${query}&chainId=${chainId}&limit=5`
         );
         
         if (response.ok) {
@@ -227,7 +227,7 @@ const SwapInterface: React.FC = () => {
         chainId: chainId.toString()
       });
 
-      const response = await fetch(`http://localhost:5000/api/swap/quote?${params.toString()}`);
+      const response = await fetch(`https://pebble-19ip.onrender.com/api/swap/quote?${params.toString()}`);
       
       if (response.ok) {
         const data = await response.json();
@@ -292,7 +292,7 @@ const SwapInterface: React.FC = () => {
         slippage: slippage
       });
 
-      const response = await fetch(`http://localhost:5000/api/swap/transaction?${params.toString()}`);
+      const response = await fetch(`https://pebble-19ip.onrender.com/api/swap/transaction?${params.toString()}`);
       console.log("Transaction API response status:", response.status);
       
       if (response.ok) {
@@ -399,7 +399,7 @@ const SwapInterface: React.FC = () => {
         chainId: chainId.toString()
       });
 
-      const response = await fetch(`http://localhost:5000/api/swap/allowance?${params.toString()}`);
+      const response = await fetch(`https://pebble-19ip.onrender.com/api/swap/allowance?${params.toString()}`);
       
       if (response.ok) {
         const data = await response.json();
@@ -448,7 +448,7 @@ const SwapInterface: React.FC = () => {
         chainId: chainId.toString()
       });
 
-      const response = await fetch(`http://localhost:5000/api/swap/approve?${params.toString()}`);
+      const response = await fetch(`https://pebble-19ip.onrender.com/api/swap/approve?${params.toString()}`);
       
       if (response.ok) {
         const data = await response.json();

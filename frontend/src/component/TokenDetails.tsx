@@ -138,7 +138,7 @@ const TokenDetails: React.FC = () => {
 
     try {
       console.log(`Searching tokens for query: ${query} on chain: ${chainId}`);
-      const response = await fetch(`http://localhost:5000/api/token/search?query=${encodeURIComponent(query)}&chainId=${chainId}&limit=10`);
+      const response = await fetch(`https://pebble-19ip.onrender.com/api/token/search?query=${encodeURIComponent(query)}&chainId=${chainId}&limit=10`);
       
       console.log(`Search response status: ${response.status}`);
       
@@ -206,7 +206,7 @@ const TokenDetails: React.FC = () => {
     setError(null);
 
     try {
-      const response = await fetch(`http://localhost:5000/api/token-details/native/${chainId}`);
+      const response = await fetch(`https://pebble-19ip.onrender.com/api/token-details/native/${chainId}`);
       
       if (response.ok) {
         const data = await response.json();
@@ -232,7 +232,7 @@ const TokenDetails: React.FC = () => {
 
     try {
       console.log(`Fetching token details for query: ${query} on chain: ${chainId}`);
-      const response = await fetch(`http://localhost:5000/api/token-details/search?query=${encodeURIComponent(query)}&chainId=${chainId}`);
+      const response = await fetch(`https://pebble-19ip.onrender.com/api/token-details/search?query=${encodeURIComponent(query)}&chainId=${chainId}`);
       
       console.log(`Response status: ${response.status}`);
       

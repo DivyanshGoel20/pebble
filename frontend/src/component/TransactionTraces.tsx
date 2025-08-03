@@ -35,7 +35,7 @@ const TransactionTraces: React.FC = () => {
     
     try {
       console.log("Fetching block trace for:", { chainId, blockNumber });
-      const response = await fetch(`http://localhost:5000/traces/block-trace?chainId=${chainId}&blockNumber=${blockNumber.trim()}`);
+      const response = await fetch(`https://pebble-19ip.onrender.com/traces/block-trace?chainId=${chainId}&blockNumber=${blockNumber.trim()}`);
       
       if (!response.ok) {
         const errorText = await response.text();
@@ -76,7 +76,7 @@ const TransactionTraces: React.FC = () => {
     
     try {
       console.log("Fetching transaction trace for:", { chainId, blockNumber, txHash });
-      const response = await fetch(`http://localhost:5000/traces/transaction-trace?chainId=${chainId}&blockNumber=${blockNumber.trim()}&txHash=${txHash.trim()}`);
+      const response = await fetch(`https://pebble-19ip.onrender.com/traces/transaction-trace?chainId=${chainId}&blockNumber=${blockNumber.trim()}&txHash=${txHash.trim()}`);
       
       if (!response.ok) {
         const errorText = await response.text();

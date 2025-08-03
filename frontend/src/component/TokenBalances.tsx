@@ -36,7 +36,7 @@ const TokenBalances: React.FC = () => {
     setError(null);
     
     try {
-      const response = await fetch(`http://localhost:5000/token-balances?walletAddress=${address}&chainId=${chainId}`);
+      const response = await fetch(`https://pebble-19ip.onrender.com/token-balances?walletAddress=${address}&chainId=${chainId}`);
       console.log("Token balance response status:", response.status);
       
       if (!response.ok) {
@@ -70,7 +70,7 @@ const TokenBalances: React.FC = () => {
     
     try {
       console.log("Fetching token prices for addresses:", tokenAddresses);
-      const response = await fetch(`http://localhost:5000/spot-prices/addresses?chainId=${chainId}&addresses=${encodeURIComponent(tokenAddresses.join(','))}`);
+      const response = await fetch(`https://pebble-19ip.onrender.com/spot-prices/addresses?chainId=${chainId}&addresses=${encodeURIComponent(tokenAddresses.join(','))}`);
       
       if (!response.ok) {
         console.error("Failed to fetch token prices:", response.status);

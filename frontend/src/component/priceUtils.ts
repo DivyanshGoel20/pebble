@@ -57,7 +57,7 @@ export const fetchNativeTokenPrice = async (chainId: number): Promise<number> =>
     console.log(`Fetching USDC price for chain ${chainId} using address: ${usdcAddress}`);
     
     // Fetch USDC price from 1inch API
-    const response = await fetch(`http://localhost:5000/spot-prices/addresses?chainId=${chainId}&addresses=${usdcAddress}`);
+    const response = await fetch(`https://pebble-19ip.onrender.com/spot-prices/addresses?chainId=${chainId}&addresses=${usdcAddress}`);
     
     if (response.ok) {
       const data = await response.json();

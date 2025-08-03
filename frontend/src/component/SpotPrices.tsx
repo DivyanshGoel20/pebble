@@ -38,7 +38,7 @@ const SpotPrices: React.FC = () => {
     
     try {
       console.log("Fetching address prices for chain:", chainId, "addresses:", customAddresses);
-      const response = await fetch(`http://localhost:5000/spot-prices/addresses?chainId=${chainId}&addresses=${encodeURIComponent(customAddresses)}`);
+      const response = await fetch(`https://pebble-19ip.onrender.com/spot-prices/addresses?chainId=${chainId}&addresses=${encodeURIComponent(customAddresses)}`);
       
       if (!response.ok) {
         const errorText = await response.text();

@@ -41,7 +41,7 @@ const GasPrice: React.FC = () => {
     setError(null);
     
     try {
-      const response = await fetch(`http://localhost:5000/gas-price?chainId=${chainId}`);
+      const response = await fetch(`https://pebble-19ip.onrender.com/gas-price?chainId=${chainId}`);
       console.log("Gas price response status:", response.status);
       
       if (!response.ok) {
